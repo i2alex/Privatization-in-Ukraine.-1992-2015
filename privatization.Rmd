@@ -28,15 +28,15 @@ library(dplyr)
 library(ggplot2)
 library(wbstats) 
 library(xlsx)
+library(gridExtra)
 ```
 
 ##Загрузка данных
-
 ```{r}
 # DOWNLOAD FILES
 
 ## 1. Extractive Industry Data
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Extractive%20industry.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/Extractive%20industry.xlsx"
 if(!file.exists("Extractive industry.xlsx")){
         download.file(url, destfile = "Extractive industry.xlsx", method = "curl")
 }
@@ -95,7 +95,7 @@ if(!file.exists("privatization_receipts_in_total_ukr_budget_receipts_per_year.xl
 }
 
 ## 11. Data on the groups, number and years of privatized companies in the Ukraine
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_ua.xlsx"
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/265e2aa7/Data/privatization_ua.xlsx"
 if(!file.exists("privatization_ua.xlsx")){
         download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
 }
@@ -111,7 +111,7 @@ url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d
 if(!file.exists("ukr_budget_receipt_per_year.xlsx")){
         download.file(url, destfile = "ukr_budget_receipt_per_year.xlsx", method = "curl")
 }
-#----------------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------
 
 #READ FILES
 ## 1. Extractive Industry Data
@@ -212,7 +212,6 @@ ProcessingIndustry <- testDF
 
 ```
 
-
 #ПРИВАТИЗАЦИЯ В УКРАИНЕ. 1992-2015 ГГ.
 
 #### Информация о данных, используемых в данном разделе 
@@ -226,43 +225,114 @@ ProcessingIndustry <- testDF
 Большая их часть (более 15 тыс.), конечно же, относилась к так называемой «группе А» - малым предприятиям, стоимость основных фондов которых не превышает 1 млн. гривен.  Предприятий групп В и Г – ( большие предприятия, а так же предприятия, имеющие стратегическое значение), было приватизировано более 7 тыс.  При этом их львиная доля – более 97% - была приватизирована еще на этапе «большой приватизации» - до 2000 года. В основном это касалось предприятий пищевой, добывающей и перерабатывающей промышленности, металлургии, производства гражданских видов транспорта. 
 Порядка 1400 объектов группы Ж (объекты социо-культурного назначения) так же были приватизированы за годы независимости. Из них около 40% - в период до 2000 года, и 60% - после.  (Более детально см.Рис.1.и Рис.2)[^footnote1]
 
-```{r Рис.1. Количество приватизированных до 2016 г. предприятий по группам}
+
+
+```{r}
+# Organization of data for plotting Fig.1.
 # Clean Na's
 good <- complete.cases(PrivatizationUA)
 PrivatizationUA_clean <- PrivatizationUA[good,]
 # Preparing data for plotting
 x <- c("A", "B,G", "D", "E", "Zh")
-Privatization_by_year <- data.frame()
+#Creating a dataframe privatized companies by groups
+Privatized_companies <- data.frame()
 for(i in x){
         temp <- PrivatizationUA_clean %>% filter(Companies.class == i)%>%
                 summarise(Companies.class = i ,Number.of.privatized.companies = sum(Number.of.privatized.companies))
-        Privatization_by_year <- rbind(Privatization_by_year, temp)
+        Privatized_companies <- rbind(Privatized_companies, temp)
 }
-# 
-Privatization_by_year$Companies.class <- as.factor(Privatization_by_year$Companies.class)
+ 
+Privatized_companies$Companies.class <- as.factor(Privatized_companies$Companies.class)
+```
+
+##### Таблица приватизированных предприятий по группам[^footnote2] за период 1992 - 2015 года
+```{r}
 # Output the table
-Privatization_by_year
+Privatized_companies
+```
+##### Рис.1. Количество приватизированных до 2016 г. предприятий по группам
+```{r}
 # Plot the dataframe
-ggplot(data = Privatization_by_year, aes(x = Companies.class, y = Number.of.privatized.companies, 
+ggplot(data = Privatized_companies, aes(x = Companies.class, y = Number.of.privatized.companies, 
                                          fill = Companies.class ))+
         geom_bar(colour="black", stat = "identity")+
         guides(fill=FALSE)+
         xlab("Class of privatized companies")+
         ylab("Number of privatized companies")+
-        ggtitle("Privatization in Ukraine 1991-2015")
+        ggtitle("Fig.1. Number of enterprises privatized by 2016 by groups")
 
 ```
 
+```{r}
+# Organization of data for plotting Fig.2.
+# Create a function "count_priv_companies" that counts the number of privatized enterprises per group for a given period of time
+count_priv_companies <- function(year) {
+        # Download tha Data of privatized companies in the Ukraine
+        url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/265e2aa7/Data/privatization_ua.xlsx"
+        if(!file.exists("privatization_ua.xlsx")){
+                download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
+        }
+        # Read th Data 
+        PrivatizationUA <- read.xlsx("privatization_ua.xlsx", sheetName="privatization", header=TRUE)
+        # Delete Na's
+        good <- complete.cases(PrivatizationUA)
+        PrivatizationUA_clean <- PrivatizationUA[good,]
+        # Change the column class and give to Na's the value of 1993 year, which was previously 1992-1993
+        PrivatizationUA_clean$Year <- suppressWarnings(as.numeric(as.character(PrivatizationUA_clean$Year)))
+        PrivatizationUA_clean$Year[c(1,24,46)] <- 1993
+        # Create a temporary dataframes
+        Privatized_byYear <- data.frame()
+        temp2 <- data.frame()
+        temp3 <- data.frame()
+        # Assign to X the value of classes of privatized enterprises
+        x <- c("A", "B,G", "D", "E", "Zh")
+        # for-loop which counts the number of enterprises for the given years
+        for(i in x){
+                for(y in year){
+                        temp <- PrivatizationUA_clean %>% filter(Companies.class == i & Year == y) 
+                        temp2 <- rbind(temp2, temp) 
+                }
+                temp3 <- temp2 %>% 
+                        summarise(Companies.class = i ,Number.of.privatized.companies = sum(Number.of.privatized.companies))
+                Privatized_byYear <- rbind(Privatized_byYear, temp3)
+                temp2 <- NULL
+        }
+                # Output the result value
+                Privatized_byYear
+}
 
+phase1 <- count_priv_companies(1993:2000)
+phase2 <- count_priv_companies(2001:2005)
+phase3 <- count_priv_companies(2006:2010)
+phase4 <- count_priv_companies(2010:2015)
+```
+
+
+##### Количество приватизированных предприятий по группам (1992-2015 гг) 
+```{r}
+
+phase1$years <- as.factor(c("1992-2000", "1992-2000", "1992-2000", "1992-2000", "1992-2000"))
+phase2$years <- as.factor(c("2001-2005", "2001-2005", "2001-2005", "2001-2005", "2001-2005"))
+phase3$years <- as.factor(c("2006-2010", "2006-2010", "2006-2010", "2006-2010", "2006-2010"))
+phase4$years <- as.factor(c("2010-2015", "2010-2015", "2010-2015", "2010-2015", "2010-2015"))
+all_phases <- rbind(phase1, phase2, phase3, phase4)
+
+ggplot(data = all_phases, aes(x = Companies.class, y = Number.of.privatized.companies, 
+                                         fill = Companies.class ))+
+        geom_bar(colour="black", stat = "identity")+
+        guides(fill=FALSE)+
+        xlab("Class of privatized companies")+
+        ylab("Number of privatized companies")+
+        ggtitle("Fig.1. Number of enterprises privatized by 2016 by groups")+
+        facet_grid(.~years, scales = "free")
+
+
+all_phases
+```
 
 
 
 [^footnote1]: По данным ежегодных отчетов Фонда государственного имущества Украины http://www.spfu.gov.ua/ru/documents/docs-list/spf-reports.html . Авторская таблица https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_ua.xlsx
 
-
-
-
-
-
-
+[^footnote2]: Группы объектов приватизации: A - небольшие объекты, B, Г - большие и стратегические предприятия, Д - объекты незавершенного строительства, E - акции и доли, принадлежащие государству в уставном капитале хозяйственных обществ, Ж - социально-культурные объекты (образование, здравоохранение, научно-исследовательские компании).Более детально см.приложение 1.
 
