@@ -1,0 +1,268 @@
+---
+title: "История и перспективы приватизации в Украине"
+author: Калиновский А.  
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+subtitle: Statistical Inference
+header-includes:
+- \usepackage[T2A]{fontenc}
+- \usepackage[utf8]{inputenc}
+- \usepackage[russian]{babel}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/aleksandr/Documents/GIT/Privatization-in-Ukraine.-1992-2015/Data")
+```
+
+# Вступление
+???????????? ?? ???????????????? (???????????? ???????????????? ????????????????)
+
+
+# Обработка данных
+##Загрузка необходимых пакетов
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(wbstats) 
+library(xlsx)
+```
+
+##Загрузка данных
+
+```{r}
+# DOWNLOAD FILES
+
+## 1. Extractive Industry Data
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Extractive%20industry.xlsx"
+if(!file.exists("Extractive industry.xlsx")){
+        download.file(url, destfile = "Extractive industry.xlsx", method = "curl")
+}
+
+## 2. Processing Industry Data
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/Processing%20industry_fin.xlsx"
+if(!file.exists("Processing industry_fin.xlsx")){
+        download.file(url, destfile = "Processing industry_fin.xlsx", method = "curl")
+}
+## 3. Investments in the fixed assets of ukrainain companies by type of the economic activity per year
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/investments%20in%20the%20fixed%20assets.xlsx"
+if(!file.exists("investments in the fixed assets.xlsx")){
+        download.file(url, destfile = "investments in the fixed assets.xlsx", method = "curl")
+}
+
+## 4. Data on the number of people employed in various sectors of the economy for years 
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/labour.xlsx"
+if(!file.exists("labour.xlsx")){
+        download.file(url, destfile = "labour.xlsx", method = "curl")
+}
+
+## 5. GDP by privat companies 
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/GDP_by_private_companies_ua_by_year.xlsx"
+if(!file.exists("GDP_by_private_companies_ua_by_year.xlsx")){
+        download.file(url, destfile = "GDP_by_private_companies_ua_by_year.xlsx", method = "curl")
+}
+
+## 6. Data on investments in privatized companies by years
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/investments_in_privatized_companies.xlsx"
+if(!file.exists("investments_in_privatized_companies.xlsx")){
+        download.file(url, destfile = "investments_in_privatized_companies.xlsx", method = "curl")
+}
+
+## 7. Data on Enterprises by ownership
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/number_of_enterprices_%20by_ownership_ua.xlsx"
+if(!file.exists("number_of_enterprices_ by_ownership_ua.xlsx")){
+        download.file(url, destfile = "number_of_enterprices_ by_ownership_ua.xlsx", method = "curl")
+}
+
+## 8. Privatization contracts by State control over the fulfillment of the terms of sales contracts by groups of privatization objects 
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_contracts_over_control.xlsx"
+if(!file.exists("privatization_contracts_over_control.xlsx")){
+        download.file(url, destfile = "privatization_contracts_over_control.xlsx", method = "curl")
+}
+
+## 9. Privatization index of EBRD. Selected countries
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_index_EBRD_selected_countries.xlsx"
+if(!file.exists("privatization_index_EBRD_selected_countries.xlsx")){
+        download.file(url, destfile = "privatization_index_EBRD_selected_countries.xlsx", method = "curl")
+}
+
+## 10. % of privatization in the total Ukrainian budget receipts per year
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx"
+if(!file.exists("privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx")){
+        download.file(url, destfile = "privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx", method = "curl")
+}
+
+## 11. Data on the groups, number and years of privatized companies in the Ukraine
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_ua.xlsx"
+if(!file.exists("privatization_ua.xlsx")){
+        download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
+}
+
+## 12. Ukrainian Budget Receipt from privatization (comulative total)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/ukr_budget_receipt_comulative_total.xlsx"
+if(!file.exists("ukr_budget_receipt_comulative_total.xlsx")){
+        download.file(url, destfile = "ukr_budget_receipt_comulative_total.xlsx", method = "curl")
+}
+
+## 13. Ukrainian Budget Receipt from privatization (per year)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/ukr_budget_receipt_per_year.xlsx"
+if(!file.exists("ukr_budget_receipt_per_year.xlsx")){
+        download.file(url, destfile = "ukr_budget_receipt_per_year.xlsx", method = "curl")
+}
+#----------------------------------------------------------------------------------------------------------------------
+
+#READ FILES
+## 1. Extractive Industry Data
+ExtractiveIndustry <- read.xlsx("Extractive industry.xlsx", sheetName="extractive industry", header=TRUE)
+## 2. Processing Industry Data
+setwd("/Users/aleksandr/Documents/GIT/Privatization-in-Ukraine.-1992-2015/Data")
+ProcessingIndustry <- read.xlsx("Processing industry_fin.xlsx", sheetName="processing industry", header=TRUE)
+## 3. Investments in the fixed assets of ukrainain companies by type of the economic activity per year
+FixedAssetsInvestments <- read.xlsx("investments in the fixed assets.xlsx", sheetName="investments in the fixed assets",header=TRUE)
+## 4. Data on the number of people employed in various sectors of the economy for years
+Labour <- read.xlsx("labour.xlsx", sheetName="labour of ukraine", header=TRUE)
+## 5. GDP by privat companies
+GDPprivat <- read.xlsx("GDP_by_private_companies_ua_by_year.xlsx", sheetName="GDP by private companies in Ukr", header=TRUE)
+## 6. Data on investments in privatized companies by years
+PrivatizedCompaniesInvestments <- read.xlsx("investments_in_privatized_companies.xlsx", sheetName="invest", header=TRUE)
+## 7. Data on Enterprises by ownership
+OwnershipData <- read.xlsx("number_of_enterprices_ by_ownership_ua.xlsx", sheetName="enterprises by ownership", header=TRUE)
+## 8. Privatization contracts by State control over the fulfillment of the terms of sales contracts by groups of privatization objects 
+PrivStateControl <- read.xlsx("privatization_contracts_over_control.xlsx", sheetName="control over contracts", header=TRUE)
+## 9. Privatization index of EBRD. Selected countries
+PrivIndexEBRD <- read.xlsx("privatization_index_EBRD_selected_countries.xlsx", sheetName="privatization index", rowIndex=1:124, colIndex=c(1:4), header=TRUE)
+## 10. % of privatization in the total Ukrainian budget receipts per year
+BudgetPrivReceipts <- read.xlsx("privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx", sheetName="% of privatization in total ", header=TRUE)
+## 11. Data on the groups, number and years of privatized companies in the Ukraine
+PrivatizationUA <- read.xlsx("privatization_ua.xlsx", sheetName="privatization", header=TRUE)
+## 12. Ukrainian Budget Receipt from privatization (comulative total)
+BudgetPriv_comulative <- read.xlsx("ukr_budget_receipt_comulative_total.xlsx", sheetName="budget receipt comulative", header=TRUE)
+## 13. Ukrainian Budget Receipt from privatization (per year)
+BudgetPriv_perYear <- read.xlsx("ukr_budget_receipt_per_year.xlsx", sheetName="budget receipts per year", header=TRUE)
+
+```
+
+##Очистка данных
+```{r, warning=TRUE}
+# 1. Extractive Industry Data
+## new column names of dataframe
+colnames(ExtractiveIndustry) <- c("ProductName", "Units", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015")
+
+## new temporary dataframe
+testDF <- data.frame()
+## convert dataframe ExtractiveIndustry in to machine format
+for (x in 1:15) {
+        year <- 1990
+        testDF$X.Coal.available. <- as.character(testDF$X.Coal.available.)
+        testDF$X.Million.tones. <-  as.character(testDF$X.Million.tones.)
+        for(i in 3:28){
+                testDF$X.1990. <- as.numeric(testDF$X.1990.)
+                testDF$NA_character_. <- as.numeric(testDF$NA_character_.)
+                temp <- c(as.character(ExtractiveIndustry[x,1]),
+                          as.character(ExtractiveIndustry[x,2]), as.numeric(ExtractiveIndustry[x,i]),
+                          as.numeric(year))
+                testDF <- rbind(testDF, temp)
+                year <- year +1 
+        }   
+}
+## new column names of dataframe
+colnames(testDF) <- c("ProductName", "Units", "Value", "Year")
+## deleting of excess line
+testDF <- testDF[-1,]
+## Extractive Industry Data in new format
+ExtractiveIndustry <- testDF
+
+#2. Processing Industry Data
+## new column names of dataframe
+colnames(ProcessingIndustry) <- c("ProductName", "Units", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015")
+
+## change class of the columns 
+for(i in 3:28){
+        ProcessingIndustry[,i] <- suppressWarnings(as.numeric(as.character(ProcessingIndustry[,i])))
+}
+
+## new temporary dataframe
+testDF <- data.frame()
+## convert dataframe ProcessingIndustry in to machine format
+for (x in 1:147) {
+        year <- 1990
+        testDF$X.Fresh..fresh.killed..or.cooled.beef.and.veal. <- as.character(testDF$X.Fresh..fresh.killed..or.cooled.beef.and.veal.)
+        testDF$X.Thousand.tons. <-  as.character(testDF$X.Thousand.tons.)
+        
+        for(i in 3:28){
+                testDF$X.1990. <- as.numeric(testDF$X.1990.)
+                testDF$NA_character_. <- as.numeric(testDF$NA_character_.)
+                temp <- c(as.character(ProcessingIndustry[x,1]),
+                          as.character(ProcessingIndustry[x,2]), as.numeric(ProcessingIndustry[x,i]),
+                          as.numeric(year))
+                testDF <- rbind(testDF, temp)
+                year <- year +1 
+        }   
+        
+}
+
+## new column names of dataframe
+colnames(testDF) <- c("ProductName", "Units", "Value", "Year")
+## deleting of excess line
+testDF <- testDF[-1,]
+## Extractive Industry Data in new format
+ProcessingIndustry <- testDF
+
+```
+
+
+#ПРИВАТИЗАЦИЯ В УКРАИНЕ. 1992-2015 ГГ.
+
+#### Информация о данных, используемых в данном разделе 
+*Большинство статистических данных  раздела «Приватизация в Украине 1992-2015 гг.» (рис.1-3), касающиеся количественных показателей приватизированных объектов в Украине по группам и годам взяты из официальных итоговых годовых отчетов Фонда государственного имущества Украины за соответствующие годы (с 1992 по 2016). На момент последней редакции данной работы, эти отчеты  можно было выбрать среди других документов и загрузить на портале Фонда в разделе Деятельность /Отчеты Фонда по ссылке http://www.spfu.gov.ua/ru/documents/docs-list/spf-reports.html . Отчеты меняли свою структуру из года в год, но в основном (особенно в последние годы), общие количественные данные по приватизированным объектам представлялись в отчетах в приложении 1. Кроме того, для удобства читателя, данные отчеты были отобраны авторами и загружены на сайте __________.  Для того, что бы иметь возможность отследить динамику приватизации объектов по годам и группам, таблицы с разбивкой по годам формировались из этих отчетов авторами самостоятельно. Данные авторских таблиц в формате excel могут быть загружены читателем на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_ua.xlsx.* 
+*Данные графика 5 (индекс приватизации) взяты авторами из базы данных ЕБРР. Полные версии файлов с данными по индексу приватизации более чем по 50 странам могут быть самостоятельно загружены читателем на портале ЕБРР (путь:  Home/What We Do/EBRD economics/Economic data/Forecasts/data, indicators). На момент последней редакции данной работы это соответствовало ссылке http://www.ebrd.com/what-we-do/economic-research-and-data/data/forecasts-macro-data-transition-indicators.html. Кроме того, для удобства читателя, данные файлы были загружены авторами на сайт __________.  На основе данных, выбранных для анализируемых стран, авторами была сформирована таблица в формате excel, которая так же загружена на сайт https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_index_EBRD_selected_countries.xlsx.*    
+*Исходные статистические данные поступлений в государственный  бюджет Украины, полученные от приватизации (Рис.6), так же взяты в соответствующих ежегодных отчетах Фонда Госимущества (обычно они либо приводятся в теле отчета, либо, что более характерно для последних лет, выводятся в отдельное приложение). Авторские таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_comulative_total.xlsx    Эти данные стали основой для авторских расчетов данных графиков 7-10. Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_per_year.xlsx*
+*Данные, касающихся государственного контроля за выполнением условий договор купли-продажи (рисунки 11-18) так же приводятся в соответствующих разделах отчетов Фонда. Авторские таблицы в формате excel, построенные на базе этих данных, могут быть загружены читателем на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_contracts_over_control.xlsx.*
+
+####-------------------------------------------------------------------------------------------------------------------
+   Этап «большой приватизации» в Украине закончился в 2000 г. За 8 лет (в период с 1992 по 2000 г) было приватизировано 18204 объекта государственной собственности, что в два раза больше чем за следующие 15 лет. (с 2001 по 2016 гг). Всего за период независимости Украина избавилась от «балласта» и передала в частные руки более 28 тыс.предприятий. (Классификация предприятий по группам в соответствии с Законом Украины «О приватизации» приведена в Приложении 1). 
+Большая их часть (более 15 тыс.), конечно же, относилась к так называемой «группе А» - малым предприятиям, стоимость основных фондов которых не превышает 1 млн. гривен.  Предприятий групп В и Г – ( большие предприятия, а так же предприятия, имеющие стратегическое значение), было приватизировано более 7 тыс.  При этом их львиная доля – более 97% - была приватизирована еще на этапе «большой приватизации» - до 2000 года. В основном это касалось предприятий пищевой, добывающей и перерабатывающей промышленности, металлургии, производства гражданских видов транспорта. 
+Порядка 1400 объектов группы Ж (объекты социо-культурного назначения) так же были приватизированы за годы независимости. Из них около 40% - в период до 2000 года, и 60% - после.  (Более детально см.Рис.1.и Рис.2)[^footnote1]
+
+```{r Рис.1. Количество приватизированных до 2016 г. предприятий по группам}
+# Clean Na's
+good <- complete.cases(PrivatizationUA)
+PrivatizationUA_clean <- PrivatizationUA[good,]
+# Preparing data for plotting
+x <- c("A", "B,G", "D", "E", "Zh")
+Privatization_by_year <- data.frame()
+for(i in x){
+        temp <- PrivatizationUA_clean %>% filter(Companies.class == i)%>%
+                summarise(Companies.class = i ,Number.of.privatized.companies = sum(Number.of.privatized.companies))
+        Privatization_by_year <- rbind(Privatization_by_year, temp)
+}
+# 
+Privatization_by_year$Companies.class <- as.factor(Privatization_by_year$Companies.class)
+# Output the table
+Privatization_by_year
+# Plot the dataframe
+ggplot(data = Privatization_by_year, aes(x = Companies.class, y = Number.of.privatized.companies, 
+                                         fill = Companies.class ))+
+        geom_bar(colour="black", stat = "identity")+
+        guides(fill=FALSE)+
+        xlab("Class of privatized companies")+
+        ylab("Number of privatized companies")+
+        ggtitle("Privatization in Ukraine 1991-2015")
+
+```
+
+
+
+
+
+[^footnote1]: По данным ежегодных отчетов Фонда государственного имущества Украины http://www.spfu.gov.ua/ru/documents/docs-list/spf-reports.html . Авторская таблица https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_ua.xlsx
+
+
+
+
+
+
+
+
