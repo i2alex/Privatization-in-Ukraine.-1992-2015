@@ -36,7 +36,7 @@ library(xlsx)
 # DOWNLOAD FILES
 
 ## 1. Extractive Industry Data
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Extractive%20industry.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/Extractive%20industry.xlsx"
 if(!file.exists("Extractive industry.xlsx")){
         download.file(url, destfile = "Extractive industry.xlsx", method = "curl")
 }
@@ -242,6 +242,14 @@ for(i in x){
 Privatization_by_year$Companies.class <- as.factor(Privatization_by_year$Companies.class)
 # Output the table
 Privatization_by_year
+# Plot the dataframe
+ggplot(data = Privatization_by_year, aes(x = Companies.class, y = Number.of.privatized.companies, 
+                                         fill = Companies.class ))+
+        geom_point(colour="black", stat = "identity")+
+        guides(fill=FALSE)+
+        xlab("Class of privatized companies")+
+        ylab("Number of privatized companies")+
+        ggtitle("Privatization in Ukraine 1991-2015")
 
 ```
 
