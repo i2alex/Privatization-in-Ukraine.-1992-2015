@@ -384,6 +384,44 @@ ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index,
 
 К каким результатам в экономике Украины, в совокупности с другими факторами, привело такое структурное изменение, как смена собственника с государственного на частного? Как отразилось на поступлениях в государственный бюджет? Стало ли подспорьем в борьбе с безработицей и бедностью? Подстегнуло ли к развитию промышленности?
 
+#ПРИВАТИЗАЦИЯ КАК ИСТОЧНИК ПОПОЛНЕНИЯ ГОСУДАРСТВЕННОГО БЮДЖЕТА УКРАИНЫ?
+
+Считается, что поступления в государственный бюджет от приватизации обычно «значительные», и являются важной статьей формирования доходной части бюджета. Уменьшение поступлений от приватизации в процентном соотношении за предыдущий отчетный период воспринимаются как «большая катастрофа», а увеличение – как «большое достижение», и всерьез и долго обсуждаются журналистами и экспертами в средствах массовой информации. Любознательный слушатель прямо сейчас может забить в поисковике словосочетание «поступления от приватизации в государственный бюджет» и убедиться, что это правда. Следует отметить, что Фонд Госимущества Украины, в своих ежегодных отчетах предпочитает публиковать график ежегодных поступлений в бюджет от приватизации по «накопительному итогу»,  т.е. прибавляя к отчетному периоду весь предыдущий «запас». В результате получается очень оптимистичная картина (Рис.6)[^footnote7] некоего «стабильного роста», из которой следует, что всего за 1992-2015 гг от приватизации в бюджет страны поступило 63 млрд.грн. 
+
+##### Рис. 6. Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по накопительному итогу (млн.грн.)
+
+```{r}
+BudgetPriv_comulative
+
+ggplot(data = BudgetPriv_comulative, aes(x = Year, y = Million.UAH, group = 1))+
+        geom_area(stat = "identity", fill = "darkgray")+
+        geom_line(colour="darkblue", size = 0.5)+
+        geom_point(colour="darkorange", size = 2)+
+        xlab("Year")+
+        ylab("Million UAH")+
+        ggtitle("Fig.6 Incomes to Ukraine budget from privatization in 1992-2015 (cumulative total)")
+
+```
+
+Однако, если посмотреть на реальные поступления в бюджет, не приплюсовывая «по-популистски» финансовые результаты всех предыдущих отчетных периодов к текущему, получится совершенно другая картина (рис.7)[^footnote8].
+
+##### Рис.7. Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по годам (млн.грн).
+```{r}
+BudgetPriv_perYear
+
+ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index, 
+                                         fill = country ))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("EBRD privatization index")+
+        ggtitle("Fig.5. EBRD's assessment of the level of privatization by years.")
+
+```
+
+
+
+
+
 
 
 
@@ -399,3 +437,9 @@ ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index,
 [^footnote5]: “Статистичний щорічник України за 2013 рік”. ДЕРЖАВНА СЛУЖБА СТАТИСТИКИ УКРАЇНИ. За редакцією О.Г.Осауленка. Відповідальний за випуск. О.А. Вишневська. 2013.  library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf. Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/number_of_enterprices_%20by_ownership_ua.xlsx
 
 [^footnote6]: http://www.ebrd.com/what-we-do/economic-research-and-data/data/forecasts-macro-data-transition-indicators.html 
+
+[^footnote7]: По данным ежегодных отчетов Фонда государственного имущества Украины  http://www.spfu.gov.ua/ru/documents/docs-list/spf-reports.html. Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_comulative_total.xlsx
+
+[^footnote8]: Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_per_year.xlsx
+
+
