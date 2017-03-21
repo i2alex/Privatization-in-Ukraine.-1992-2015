@@ -111,6 +111,13 @@ url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d
 if(!file.exists("ukr_budget_receipt_per_year.xlsx")){
         download.file(url, destfile = "ukr_budget_receipt_per_year.xlsx", method = "curl")
 }
+
+## 14. Number of privatized companies of groups В,G by industries on.01.01.2005
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/9aac259c/Data/privatization_by_economic_activity.xlsx"
+if(!file.exists("privatization_by_economic_activity.xlsx")){
+        download.file(url, destfile = "privatization_by_economic_activity.xlsx", method = "curl")
+}
+
 #----------------------------------------------------------------------------------------------------------------
 
 #READ FILES
@@ -141,7 +148,8 @@ PrivatizationUA <- read.xlsx("privatization_ua.xlsx", sheetName="privatization",
 BudgetPriv_comulative <- read.xlsx("ukr_budget_receipt_comulative_total.xlsx", sheetName="budget receipt comulative", header=TRUE)
 ## 13. Ukrainian Budget Receipt from privatization (per year)
 BudgetPriv_perYear <- read.xlsx("ukr_budget_receipt_per_year.xlsx", sheetName="budget receipts per year", header=TRUE)
-
+## 14. Number of privatized companies of groups В,G by industries on.01.01.2005
+Priv_economic_activity <- read.xlsx("privatization_by_economic_activity.xlsx", sheetName="privatization by econom.act.", header=TRUE)
 ```
 
 ##Очистка данных
@@ -332,6 +340,16 @@ all_phases
 Как мы видим, основными отраслями промышленности, которых коснулась приватизация, стали машиностроение, строительство, пищевая и транспортная промышленность.
 
 ##### Рис.3. Приватизированные предприятия групп В,Г по отраслям промышленности на 01.01.2005 г.[^footnote3] 
+```{r}
+Priv_economic_activity
+
+ggplot(data = Priv_economic_activity, aes(x = economic.activity, y = number.of.privatized.companies.on.01.01.2005, 
+                                         fill = economic.activity))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Economic activity")+
+        ylab("Number of privatized companies")+
+        ggtitle("Fig.3. Number of privatized companies by industries on.01.01.2005")
+```
 
 Об ударных темпах приватизации так же говорит и тот факт, что еще в 2001 году количество государственных предприятий составляло 5% от общего числа предприятий Украины, а уже в 2014 – только 2% (около 6 тыс.), Из них более 2 тыс. относились к предприятиям военно-промышленного комплекса и инфраструктурным предприятиям – отраслям промышленности, пока практически избежавшим приватизации.[^footnote4] (рис.4).
 
@@ -345,7 +363,6 @@ ggplot(data = OwnershipData, aes(x = year, y = number.of.enterprices,
         xlab("Class of privatized companies")+
         ylab("Number of privatized companies")+
         ggtitle("Fig.4. Number of state and private enterprises in Ukraine by years")
-
 ```
 
 Даже Европейский Союз в лице Европейского Банка Реконструкции и Развития довольно высоко оценил эти успехи Украины на пути передачи государственного имущества в более эффективные частные руки, как обязательного условия успешного экономического развития. В своем ежегодном исследовании, аналитики Банка выставляют индексовый показатель (от «1» до «5»), оценивающий уровень приватизации в стране для крупных и мелких предприятий[^footnote6]:
@@ -409,15 +426,74 @@ ggplot(data = BudgetPriv_comulative, aes(x = Year, y = Million.UAH, group = 1))+
 ```{r}
 BudgetPriv_perYear
 
-ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index, 
-                                         fill = country ))+
+ggplot(data = BudgetPriv_perYear, aes(x = Year, y = Million.UAH))+
         geom_bar(colour="black", stat = "identity")+
-        xlab("Countries")+
-        ylab("EBRD privatization index")+
-        ggtitle("Fig.5. EBRD's assessment of the level of privatization by years.")
+        
+        xlab("Years")+
+        ylab("Millions UAH")+
+        ggtitle("Fig.7. Number of privatized companies by industries on.01.01.2005")
 
 ```
 
+
+«Пик» значительно больших поступлений в бюджет 2005 года связан с громкой ре-приватизацией «по честному» нескольких предприятий, проведенный правительством Тимошенко, а «пик» 2011 года – опять же, вынужденной необходимостью наполнить бюджет после президентских выборов 2010 г.   
+Так же стоит перевести «гривневые» поступления в бюджет Украины от приватизации в более «твердую валюту», например, в номинальные доллары США, что бы иметь возможность сравнивать эффективность приватизации в разные временные периоды. (рис.7а)  
+
+##### Рис.7a. Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по годам (млн.ном.дол.США.)
+
+```{r}
+ggplot(data = BudgetPriv_perYear, aes(x = Year, y = Million.USD))+
+        geom_bar(colour="blue", fill = "white", stat = "identity")+
+        coord_cartesian(ylim=c(0, 3000))+
+        xlab("Years")+
+        ylab("Millions USD")+
+        ggtitle("Fig.7a. Number of privatized companies by industries on.01.01.2005")
+```
+
+Отдельно стоит отметить, что поступления в бюджет от приватизации за период 1992-2000 года – период, когда было приватизировано более 58% малых предприятий и 97% (!!!)  больших и стратегически значимых предприятий, составили 1,06 млрд. номинальных долларов США, а поступления от приватизации с 2000 по 2015 год принесли более 9,5 млрд. – что в 9 раз больше. (Рис.8).	 
+
+##### Рис.8. Сравнение поступлений в бюджет Украины от приватизации по периодам (млн.ном.дол.США). 
+```{r}
+
+temp <- BudgetPriv_perYear[1:2,] %>% summarise(Year = "1992-2000", Million.USD = sum(Million.USD))
+temp2 <- BudgetPriv_perYear[3:17,] %>% summarise(Year = "2001-2015", Million.USD = sum(Million.USD))
+BudgetPriv_per2Phases <- rbind(temp, temp2)
+
+#
+ggplot(data = BudgetPriv_per2Phases, aes(x = Year, y = Million.USD, fill = Year))+
+        geom_bar(colour="black", stat = "identity")+
+        guides(fill=FALSE)+
+        xlab("Years")+
+        ylab("Millions USD")+
+        ggtitle("Fig.8. Comparison of revenues to the budget from privatization by period")
+```
+
+Интересным при этом представляется сравнить поступления от приватизации с другими статьями пополнения бюджета и определить долю, которую занимает приватизация в его структуре. (Табл.1.)
+
+**_Таблица 1. Сравнение поступлений от приватизации с общей доходной частью государственного бюджета Украины (млн. грн.)_[^footnote9]**
+```{r}
+colnames(BudgetPrivReceipts) <- c("Year", "Total Incomes", "Income from privatization", "% Priv. to total income")
+BudgetPrivReceipts
+```
+
+Из данных таблицы видно, что в среднем поступления от приватизации составляли 0,9% общих доходов государственного бюджета Украины. Просто для того, что бы убедиться воочию, насколько мала эта доля, отобразим это процентное соотношение на графике (рис.9).
+
+##### Рис.9. Сравнение поступлений от приватизации с другими статьями дохода государственного бюджета Украины (%). 
+```{r}
+perc_inc <- data.frame(sum(BudgetPrivReceipts$`Income from privatization`)/sum(BudgetPrivReceipts$`Total Incomes`)*100, "% revenues from privatization")
+temp <- c(100 - perc_inc[1,1])
+perc_inc <- rbind(perc_inc, temp)
+colnames(perc_inc) <- c("% revenues", "Source of replenishment of the state budget")
+perc_inc$`Source of replenishment of the state budget` <- c("% revenues from privatization", "% revenues from other sources")
+#
+
+
+```
+
+Если сопоставить поступления в бюджет от приватизации в долларах США по годам с количеством приватизированных за тот же год объектов, то можно получить следующую картину (Рис.10).
+В 1992-1999 гг один объект приватизации (читай «бизнес») частные собственники покупали у государства в среднем за 41 тыс.дол.США. С 2000 по 2014 год приходилось платить в среднем уже порядка 370 тыс.дол.США, за исключением «конъюнктурных пиков» 2004-2005 и 2011-2012 годов, описанных выше, когда такие покупки обходились в 4-6 млн.дол. В 2015 году, к слову, выкуп одного бизнеса у государства опять практически вернулся к уровню 1992-1999 гг., составив 51 тыс.дол.США. 
+
+##### Рис.10. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)
 
 
 
@@ -441,5 +517,8 @@ ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index,
 [^footnote7]: По данным ежегодных отчетов Фонда государственного имущества Украины  http://www.spfu.gov.ua/ru/documents/docs-list/spf-reports.html. Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_comulative_total.xlsx
 
 [^footnote8]: Авторская таблица доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/ukr_budget_receipt_per_year.xlsx
+
+[^footnote9]: Данные финансового портала МинФин http://index.minfin.com.ua/budget/ Данные авторской таблицы можно загрузить https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx
+
 
 
