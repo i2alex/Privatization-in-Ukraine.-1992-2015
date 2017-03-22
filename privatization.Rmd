@@ -480,24 +480,70 @@ BudgetPrivReceipts
 
 ##### Рис.9. Сравнение поступлений от приватизации с другими статьями дохода государственного бюджета Украины (%). 
 ```{r}
-perc_inc <- data.frame(sum(BudgetPrivReceipts$`Income from privatization`)/sum(BudgetPrivReceipts$`Total Incomes`)*100, "% revenues from privatization")
+perc_inc <- data.frame(sum(BudgetPrivReceipts$`Income from privatization`)/sum(BudgetPrivReceipts$`Total Incomes`)*100, 0)
 temp <- c(100 - perc_inc[1,1])
 perc_inc <- rbind(perc_inc, temp)
 colnames(perc_inc) <- c("% revenues", "Source of replenishment of the state budget")
 perc_inc$`Source of replenishment of the state budget` <- c("% revenues from privatization", "% revenues from other sources")
 #
-
+ggplot(data = perc_inc, aes(x = `Source of replenishment of the state budget`, y = `% revenues`, fill = `Source of replenishment of the state budget`))+
+        geom_bar(colour="black", stat = "identity")+
+        
+        xlab("Years")+
+        ylab("Millions USD")+
+        ggtitle("Fig.9. Comparison of receipts from privatization with other articles of income")
 
 ```
 
 Если сопоставить поступления в бюджет от приватизации в долларах США по годам с количеством приватизированных за тот же год объектов, то можно получить следующую картину (Рис.10).
 В 1992-1999 гг один объект приватизации (читай «бизнес») частные собственники покупали у государства в среднем за 41 тыс.дол.США. С 2000 по 2014 год приходилось платить в среднем уже порядка 370 тыс.дол.США, за исключением «конъюнктурных пиков» 2004-2005 и 2011-2012 годов, описанных выше, когда такие покупки обходились в 4-6 млн.дол. В 2015 году, к слову, выкуп одного бизнеса у государства опять практически вернулся к уровню 1992-1999 гг., составив 51 тыс.дол.США. 
 
+```{r, warning=FALSE}
+# Preparing data for figure 10
+## The average cost of one privatized state enterprise from 1992 to 1999
+avercost <- data.frame("1992-1999", BudgetPriv_perYear[1,3]/sum(count_priv_companies(1993:1999)$Number.of.privatized.companies)*1000) 
+avercost2 <- data.frame(as.numeric(NULL,NULL))
+
+## The average cost of one privatized state enterprise from 2000 to 2015 by years
+for(i in 2000:2015){
+        x <- filter(BudgetPriv_perYear, Year == i)[1,3]
+        y <- sum(count_priv_companies(i)$Number.of.privatized.companies)
+       temp <- data.frame(i, (x/y)*1000)
+       
+       if (ncol(avercost2)==ncol(temp)) {names(avercost2) <- names(temp)}
+       
+       avercost2 <- rbind(avercost2, temp)
+}
+## Combine the data of the periods 1992-1999 and 2000-2015 into one table
+names(avercost) <- names(avercost2) 
+avercost <- rbind(avercost2, avercost)
+colnames(avercost) <- c("Year", "Nominal thousand USD for 1 company")
+avercost$`Nominal thousand USD for 1 company` <- round(avercost$`Nominal thousand USD for 1 company`, 2)
+```
+
+**_Таблица--. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)_**
+```{r}
+avercost
+```
+
 ##### Рис.10. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)
+```{r}
+ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, fill = Year))+
+        geom_bar(colour="black", stat = "identity")+
+        
+        coord_cartesian(ylim=c(0, 4000))+
+        xlab("Years")+
+        ylab("Nominal thousand USD")+
+        ggtitle("Fig.10. The average cost of 1 privatized company by year")
+```
+
+Кроме того, следует отметить, что приватизация предприятия, как и любая другая смена владельца, зачастую, влечет за собой реструктуризацию, а следовательно, увольнение людей. Поскольку люди, работающие на государственных предприятиях, социально защищены гораздо лучше, чем в частной структуре, все они пользуются системой «социальной защиты», становятся на биржу труда, регистрируются в центрах занятости. Общие затраты государства на 1-го безработного, проходящего через систему социальной защиты, как прямые (выплаты пособий, переобучение, и.т.д.) так и косвенные (зарплаты социальных работников, содержание офисов центров занятости, и т.д.), составляют примерно 5 тыс.евро на человека по оценкам эксперта аналитической платформы VoxUkraine Люка Ванкраена[^footnote10]. Этот же эксперт, в своей статье *Outsourcing Privatization In Ukraine To Attract Capital And Raise Efficiency (Аутсорсинг приватизации в Украине для привлечения капитала и повышения эффективности)* отмечает, что в результате приватизации только за последние 5 лет более  500 тыс.чел. попали в систему социальной зашиты, потеряв работу из-за реструктуризации предприятия, сменившего собственника. 
+Путем несложных расчетов можно убедиться, что, к сожалению, за последние 5 лет на социальные выплаты, переквалификацию, поиск нового места работы, и т.д. для людей, потерявших работу из-за того, что предприятия, где они работали ранее,  были приватизированы, государство потратило примерно 2,5 млрд. евро, а «заработало» на приватизации всего 2,134 млрд. (примерно на 20% меньше).  
 
 
-
-
+#ГОСУДАРСТВЕННЫЙ КОНТРОЛЬ ИЛИ ВСПОМИНАЕТ ЛИ ГОСУДАРСТВО О СВОЕЙ БЫВШЕЙ СОБСТВЕННОСТИ? 
+Конечно же, формально существует механизм , благодаря которому государство может контролировать некоторое время (обычно от 3х до 5-ти лет) дальнейшую судьбу объектов, проданных в частные руки. Это специальные условия, указанные в договорах купли-продажи объектов приватизации. Такими условиями могут являться: привлечение инвестиций в приватизированное предприятие, неизменность основных видов деятельности, сохранение (а иногда и увеличение) количества рабочих мест, сохранение объемов выпускаемой продукции, и т.д. Такие договора находятся на контроле Фонда госимущества, которым проводятся ежегодные проверки выполнения  указанных условий. 
+Всего по накопительному итогу на 2015 год  Фонд госимущества «отслеживал судьбу» 12359 объектов приватизации (43% общего количества приватизированных объектов): из них 2937 – объекты незавершенного строительства (или почти 75% общего количества приватизированных объектов этой группы),  8341 – объекты малой приватизации (56% объектов группы) а так же 1081 объект групп В и Г – крупных и стратегически важных предприятий.  Относительно именно этих объектов (В и Г), казалось бы, контроль должен быть максимальным, го государство именно в этой группе, по чему то, оставило за собой право интересоваться дальнейшей судьбой всего лишь 15% предприятий этой группы.  (Рис.11 и 12). 
 
 
 
@@ -520,5 +566,6 @@ perc_inc$`Source of replenishment of the state budget` <- c("% revenues from pri
 
 [^footnote9]: Данные финансового портала МинФин http://index.minfin.com.ua/budget/ Данные авторской таблицы можно загрузить https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx
 
+[^footnote10]: http://voxukraine.org/2015/01/23/outsourcing-privatization-attracting-capital-while-raising-efficiency/
 
 
