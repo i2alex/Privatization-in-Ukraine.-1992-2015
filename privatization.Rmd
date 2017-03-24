@@ -58,10 +58,16 @@ if(!file.exists("labour.xlsx")){
         download.file(url, destfile = "labour.xlsx", method = "curl")
 }
 
-## 5. GDP by privat companies 
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/GDP_by_private_companies_ua_by_year.xlsx"
-if(!file.exists("GDP_by_private_companies_ua_by_year.xlsx")){
-        download.file(url, destfile = "GDP_by_private_companies_ua_by_year.xlsx", method = "curl")
+## 5. Private sector share in GDP (in per cent)  
+#url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/GDP_by_private_companies_ua_by_year.xlsx"
+#if(!file.exists("GDP_by_private_companies_ua_by_year.xlsx")){
+#        download.file(url, destfile = "GDP_by_private_companies_ua_by_year.xlsx", method = "curl")
+#        }
+
+## 5. Private sector share in GDP (in per cent) 
+url <- "http://www.ebrd.com/downloads/research/economics/macrodata/sci.xls"
+if(!file.exists("sci.xls")){
+        download.file(url, destfile = "sci.xls", method = "curl")
 }
 
 ## 6. Data on investments in privatized companies by years
@@ -118,6 +124,18 @@ if(!file.exists("privatization_by_economic_activity.xlsx")){
         download.file(url, destfile = "privatization_by_economic_activity.xlsx", method = "curl")
 }
 
+## 15. Analysis of the control over the fulfillment of the terms of sales contracts by groups of privatization objects
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/00c8fffa/Data/violations_in_%20the_%20contracts_over_control.xlsx"
+if(!file.exists("violations_in_ the_ contracts_over_control.xlsx")){
+        download.file(url, destfile = "violations_in_ the_ contracts_over_control.xlsx", method = "curl")
+}
+
+## 16. Penalties accrued for violating the terms of contracts of sale and purchase of privatization objects by years
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/00c8fffa/Data/penalties_per_violation_in_the_contracts_over_control.xlsx"
+if(!file.exists("penalties_per_violation_in_the_contracts_over_control.xlsx")){
+        download.file(url, destfile = "penalties_per_violation_in_the_contracts_over_control.xlsx", method = "curl")
+}
+
 #----------------------------------------------------------------------------------------------------------------
 
 #READ FILES
@@ -130,8 +148,11 @@ ProcessingIndustry <- read.xlsx("Processing industry_fin.xlsx", sheetName="proce
 FixedAssetsInvestments <- read.xlsx("investments in the fixed assets.xlsx", sheetName="investments in the fixed assets",header=TRUE)
 ## 4. Data on the number of people employed in various sectors of the economy for years
 Labour <- read.xlsx("labour.xlsx", sheetName="labour of ukraine", header=TRUE)
-## 5. GDP by privat companies
-GDPprivat <- read.xlsx("GDP_by_private_companies_ua_by_year.xlsx", sheetName="GDP by private companies in Ukr", header=TRUE)
+## 5. Private sector share in GDP (in per cent) 
+#GDPprivat <- read.xlsx("GDP_by_private_companies_ua_by_year.xlsx", sheetName="GDP by private companies in Ukr", header=TRUE)
+
+GDPprivat <- read.xlsx("sci.xls", sheetName="Ukraine", header=TRUE)
+
 ## 6. Data on investments in privatized companies by years
 PrivatizedCompaniesInvestments <- read.xlsx("investments_in_privatized_companies.xlsx", sheetName="invest", header=TRUE)
 ## 7. Data on Enterprises by ownership
@@ -150,6 +171,11 @@ BudgetPriv_comulative <- read.xlsx("ukr_budget_receipt_comulative_total.xlsx", s
 BudgetPriv_perYear <- read.xlsx("ukr_budget_receipt_per_year.xlsx", sheetName="budget receipts per year", header=TRUE)
 ## 14. Number of privatized companies of groups В,G by industries on.01.01.2005
 Priv_economic_activity <- read.xlsx("privatization_by_economic_activity.xlsx", sheetName="privatization by econom.act.", header=TRUE)
+## 15. Analysis of the control over the fulfillment of the terms of sales contracts by groups of privatization objects
+Violations_contracts <- read.xlsx("violations_in_ the_ contracts_over_control.xlsx", sheetName="violations", header=TRUE)
+## 16. Penalties accrued for violating the terms of contracts of sale and purchase of privatization objects by years
+Penalties_per_violation <- read.xlsx("penalties_per_violation_in_the_contracts_over_control.xlsx", sheetName="penalties", header=TRUE)
+
 ```
 
 ##Очистка данных
@@ -217,6 +243,16 @@ colnames(testDF) <- c("ProductName", "Units", "Value", "Year")
 testDF <- testDF[-1,]
 ## Extractive Industry Data in new format
 ProcessingIndustry <- testDF
+
+# 5. Private sector share in GDP (in per cent)  
+GDPprivat <- data.frame(GDPprivat2[2,3],GDPprivat2[5,3])
+for(i in 4:9){
+        temp <- data.frame(GDPprivat2[2,i],GDPprivat2[5,i])
+        names(GDPprivat) <- names(temp)
+        GDPprivat <- rbind(GDPprivat, temp)
+}
+
+colnames(GDPprivat) <- c("Year", "% of GDP by private companies")
 
 ```
 
@@ -346,6 +382,7 @@ Priv_economic_activity
 ggplot(data = Priv_economic_activity, aes(x = economic.activity, y = number.of.privatized.companies.on.01.01.2005, 
                                          fill = economic.activity))+
         geom_bar(colour="black", stat = "identity")+
+        coord_flip()+
         xlab("Economic activity")+
         ylab("Number of privatized companies")+
         ggtitle("Fig.3. Number of privatized companies by industries on.01.01.2005")
@@ -545,6 +582,382 @@ ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, 
 Конечно же, формально существует механизм , благодаря которому государство может контролировать некоторое время (обычно от 3х до 5-ти лет) дальнейшую судьбу объектов, проданных в частные руки. Это специальные условия, указанные в договорах купли-продажи объектов приватизации. Такими условиями могут являться: привлечение инвестиций в приватизированное предприятие, неизменность основных видов деятельности, сохранение (а иногда и увеличение) количества рабочих мест, сохранение объемов выпускаемой продукции, и т.д. Такие договора находятся на контроле Фонда госимущества, которым проводятся ежегодные проверки выполнения  указанных условий. 
 Всего по накопительному итогу на 2015 год  Фонд госимущества «отслеживал судьбу» 12359 объектов приватизации (43% общего количества приватизированных объектов): из них 2937 – объекты незавершенного строительства (или почти 75% общего количества приватизированных объектов этой группы),  8341 – объекты малой приватизации (56% объектов группы) а так же 1081 объект групп В и Г – крупных и стратегически важных предприятий.  Относительно именно этих объектов (В и Г), казалось бы, контроль должен быть максимальным, го государство именно в этой группе, по чему то, оставило за собой право интересоваться дальнейшей судьбой всего лишь 15% предприятий этой группы.  (Рис.11 и 12). 
 
+##### Рис.11. Сравнение количества объектов приватизации подлежащих государственному контролю с общим количеством объектов приватизации группы[^footnote11].
+```{r}
+PrivStateControl
+PrivStateControl$control.status <- as.factor(PrivStateControl$control.status)
+class(PrivStateControl$control.status)
+ggplot(data = PrivStateControl, aes(x = object.class, y = number.of.objects, fill = control.status))+
+        geom_bar(stat = "identity")+
+        xlab("Group of enterprises")+
+        ylab("Number of enterprises")+
+        ggtitle("Fig.11. Privatized companies under state control and not controled.")
+```
+
+
+##### Рис 12. Доля предприятий по группам, договор купли-продажи которых содержит дополнительные условия. (%)
+```{r}
+x <- c("A", "B,G", "D")
+underControl <- data.frame()
+for(i in x){
+        temp <- PrivStateControl %>% filter(object.class == i) %>%
+                summarise(object.class = i, `% under state control` = number.of.objects[2]/sum(number.of.objects)*100)
+        
+        underControl <- rbind(underControl, temp)
+}
+
+underControl
+
+ggplot(data = underControl, aes(x = object.class, y = `% under state control`, fill = object.class))+
+        geom_bar(stat = "identity")+
+        xlab("Group of enterprises")+
+        ylab("%")+
+        ggtitle("Fig.12. Percentage of privatized companies under state control")
+```
+
+Другими словами, в 85% случаях  частный собственник, приобретая крупное или стратегически важное предприятие, не брал на себя никаких обязательств ни по привлечению инвестиций, ни по сохранению вида деятельности, ни по объемам выпускаемой продукции, ни по сохранению рабочих мест. 
+
+При этом, даже те собственники, которые брали на себя обязательства, соблюдали их отнюдь не всегда. Так, только официальные плановые проверки Фонда госимущества выявляли ежегодно нарушения условий договоров купли-продажи в среднем в 20% случаях от общего количества проверенных договоров.  Как видно из графика (рис.13), наибольшее количество нарушений выявлялось на этапе «большой приватизации» - до 2000 года. После этого выявляемое проверками количество нарушений снизилось, и остается на уровне 14-15% ежегодно. 
+
+##### Рис.13. Нарушения, выявляемые проверками условий выполнения договоров купли-продажи приватизированных объектов по годам (% к проверяемым договорам)[^footnote12].
+```{r}
+colnames(Violations_contracts) <- c("Year", "% contracts with violations")
+Violations_contracts$Year <- as.factor(Violations_contracts$Year)
+
+Violations_contracts
+
+ggplot(data = Violations_contracts, aes(x = Year, y = `% contracts with violations`, group = 1))+
+        geom_line(colour="darkblue")+
+        geom_point()+
+       
+        xlab("Year")+
+        ylab("%")+
+        ggtitle("Fig.13. % Contracts with violations of the terms of sales of privatization objects") 
+```
+
+При этом, каждый слушатель, без сомнения, будучи патриотом и любя свою страну, все же понимает уровень коррупции в ней, и может интуитивно оценить, каким, скорее всего, является реальный уровень нарушений, если данные официальных отчетов держатся на отметке 14-15%. 
+Как же наказываются предприятия, которые нарушают условия договоров купли-продажи? Они оплачивают штрафы. Зная из отчетов Фонда госимущества количество предприятий-нарушителей и общую сумму штрафов, начисленную по результатам ежегодных проверок, несложно подсчитать, во сколько обходится предприятию невыполнение обязательств (в том числе и сохранение основных видов деятельности, создание рабочих мест, привлечение инвестиций). Для возможности сравнивать разные временные периоды, переведем сумму штрафов в номинальные дол.США. (См.рис.14.)
+
+##### Рис.14 Штрафы, начисленные за нарушение условий договоров купли-продажи объектов приватизации по годам на 1 нарушителя (ном.дол.США)[^footnote13].
+```{r}
+Penalties_per_violation2 <- filter(Penalties_per_violation, Category == "Penalties per violator")
+Penalties_per_violation2$year <- as.factor(Penalties_per_violation2$year)
+Penalties_per_violation2
+
+ggplot(data = Penalties_per_violation2, aes(x = year, y = Number, size=Number, group = 1))+
+        geom_line(colour="darkgray")+
+        geom_point(colour = "orange")+
+       
+        xlab("Year")+
+        ylab("nominal US dollars per violator")+
+        ggtitle("Fig.14. Penalties accrued for violating the terms of privatization for 1 violator")
+```
+
+Сумма штрафа на одно предприятие составляла в среднем 374 доллара США в год, что навряд ли можно назвать серьезным сдерживающим фактором, мотивирующим руководство предприятия не нарушать обязательства по приватизационному договору.  А вот «крайняя мера» - возврат предприятия в государственную собственность за все 20 лет была применена всего к 336 объектам. Т.е. из-за невыполнения условий приватизационных договоров было возвращено чуть больше 2% всех приватизированных предприятий, держащихся на контроле в Фонде госимущества.
+Основной вынужденной необходимостью приватизации промышленных предприятий считается всеми понятное «нет денег» у государства на модернизацию изношенных основных фондов, замену морально-устаревшего оборудования, квалифицированный менеджмент, маркетинг и т.д. Считается, что новый владелец – частник - обязательно вложит инвестиции в купленную собственность, создаст новые рабочие места, повысит зарплаты и предприятие получит «вторую жизнь». 
+Давайте проанализируем по некоторым показателям успехи приватизированных в Украине предприятий[^footnote14]:.  
+
+## Привлечение инвестиций. 
+
+В ежегодных отчетах Фонд госимущества так же публикует статистику по привлеченным в приватизированные предприятия инвестициям по накопительному итогу – картинка получается позитивная, линия графика инвестиций стремится вверх, достигая в 2015 году отметки почти в 30 млрд.грн. (Рис.15)[^footnote15]
+
+##### Рис.15. Инвестиции в приватизированные предприятия по накопительному итогу (млрд.грн)
+```{r}
+PrivatizedCompaniesInvestments
+# Пересчитываем таблицу, показывая ежегодный результат по накопительному методу
+PCIcommulative <- data.frame(PrivatizedCompaniesInvestments[1,1], PrivatizedCompaniesInvestments[1,2])
+for (i in 2:14){
+       temp <-  data.frame(PrivatizedCompaniesInvestments[i,1], PrivatizedCompaniesInvestments[i,2] +
+                                   PCIcommulative[i-1,2]) 
+       names(PCIcommulative) <- names(temp)
+       PCIcommulative <- rbind(PCIcommulative, temp)
+}
+
+colnames(PCIcommulative) <- c("Year", "Million UAH")
+
+ggplot(data = PCIcommulative, aes(x = Year, y = `Million UAH`, group = 1))+
+        geom_line(colour="darkgreen", size = 1)+
+        geom_point(colour = "orange")+
+        geom_smooth(method = "loess")+
+       
+        xlab("Year")+
+        ylab("Million UAH")+
+        ggtitle("Fig.15. Investments in privatized enterprises by cumulative total (Billion UAH)")
+
+```
+
+##### Рис.16. Инвестиции в приватизированные предприятия по годам (млн.ном.дол.США)[^footnote16].
+
+```{r}
+
+ggplot(data = PrivatizedCompaniesInvestments, aes(x = Year, y = million.USD, group = 1))+
+        geom_line(colour="darkorange", size = 1)+
+        geom_point(aes(colour = million.USD, size = million.USD))+
+        geom_smooth(method = "loess")+
+       
+        xlab("Year")+
+        ylab("Million USD")+
+        ggtitle("Fig.16. Investments in privatized enterprises by year (million USD)")
+```
+
+Итого, в приватизированные предприятия Украины частный собственник за 20 лет (с 1995 по 2015 год) вложил 3,6 млрд.дол.США. Если разделить эту сумму на все объекты приватизированной недвижимости, (28 тыс), получится, что каждое предприятие получало чуть более 6 тыс.дол. в год (или 130 тысяч долларов по накопительному итогу за все 20 лет). Даже, предположив, что инвестиции получали только крупные предприятия и объекты «недостроя», что составит 11 тыс.объектов (исключив из общего числа объекты малой приватизации), все равно сумма получится незначительной – 16,7 тыс.дол. ежегодно (или  330 тыс.долларов по накопительному итогу за 20 лет). Очевидно, что подобную сумму вряд ли можно счесть такой, которая в состоянии привести к качественным изменениям, позволяющим предприятиям стать конкурентоспособными на международном рынке, и говорить, например, о модернизации морально-устаревшего станочного парка или замены изношенных основных фондов, к сожалению, не приходится. 
+
+##Рабочие места. 
+В среднем только в 7% случаев, заключая договор о купле-продаже со специальными условиями, государство вводило в договор условие о сохранении рабочих мест и только в 5% случаев – условие о создании новых рабочих мест. (Рис.17). При этом не стоит забывать, что эта «опека» касалась только тех объектов, которые находились на контроле у государства (42% от всех приватизированных).  
+
+##### (Рис.17).Доля договоров о купле-продаже, содержащих условия о сохранении и увеличении рабочих, от общего количества договоров, находящихся на контроле Фонда госимущества (%). 
+```{r}
+
+```
+
+Кроме того, интересными представляются и абсолютные цифры, о которых идет речь. Так, в среднем с 2000 по 2005 года, ежегодно приватизированные предприятия брали на себя обязательства по созданию 3000 рабочих мест. В 2015 году на приватизированных предприятиях было создано 234 рабочих места, с 2015 по конец 2017 предприятия должны создать еще 568 рабочих места. (Рис.18). Даже для масштабов областного центра эти цифры просто смешны, а в масштабах страны их вполне можно назвать стремящимися к нулю. При том, что в 2015 году только на учете в центрах занятости как безработные стояло 400 тыс.чел.[^footnote17]:, создание 234 рабочих мест (0,05%) на вряд ли стоит принимать во внимание. 
+
+#####Рис. 18. Кол-во рабочих мест, созданное в рамках выполнения условий договоров купли-продажи государственного имущества по годам (ед.). 
+```{r}
+
+```
+
+
+#ЭКОНОМИЧЕСКОЕ РАЗВИТИЕ УКРАИНЫ, 25 лет пути.
+*Данные графиков 19-24 взяты из базы данных индикаторов Мирового Банка. Каждый график снабжен ссылкой на соответствующий файл, на момент последней редакции этой работы.*
+*Графики 25 и 26 построены на основе данных, публикуемых ЕБРР. На момент последней редакции данной работы, эти данные можно было загрузить по ссылке http://www.ebrd.com/what-we-do/economic-research-and-data/data/forecasts-macro-data-transition-indicators.html. Кроме того, данный файл и авторская таблица доступны для скачивания на нашем сайте....*
+
+После 1991 года все страны  бывшего СССР пережили глубокий экономический кризис, связанный с разрывом тесных экономических связей, большим количеством в экономике предприятий с незавершенным циклом производства, инфляцией, и т.д.   Страны проводили экономические реформы, реструктуризировали промышленность, приватизировали ранее принадлежавшие государству предприятия.  
+
+Давайте рассмотрим несколько показателей экономического развития Украины, и для сравнения будем использовать аналогичные показатели и других стран, которые в 1990 году были в той же отправной точке, что и Украина, но выбрали разные пути развития – Беларусь, Россию (государственный капитализм) и Латвию, Литву (либеральная открытая экономика). 
+После стремительного падения после распада СССР, ВВП Украины стабильно рос, «догнав» в 2005 году показатель 1992 года.  Экономический кризис 2008 года отбросил его на несколько лет назад.   Следующие 5 лет, ВВП показывал ежегодный прирост,  пока очередной кризис, вызванный уже скорее политическими причинами, опять не уменьшил его в два раза, с 183 млрд. долларов до 90 млрд. (см.Рис. 19)[^footnote18]. 
+
+##### Рис.19. ВВП Украины 1992-2015 гг. (ном.дол.США).
+```{r}
+
+gdp_data_ua <- wb(country = c("UA"), indicator = "NY.GDP.MKTP.CD", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+for(i in 1:24){
+       gdp_data_ua$value[i] <- gdp_data_ua$value[i]/1000000000 
+}
+
+colnames(gdp_data_ua) <- c("GDP Billions USD", "Year", "Country")
+
+gdp_data_ua
+
+ggplot(data = gdp_data_ua, aes(x = Year, y = `GDP Billions USD`, group = 1))+
+        geom_line(colour="darkorange", size = 1)+
+        geom_point(colour = "black", size = 2)+
+        geom_smooth(method = "loess")+
+       
+        xlab("Year")+
+        ylab("Billions USD")+
+        ggtitle("Fig.19. GDP of Ukraine 1992-2015. (Nom. US dollars).")
+
+```
+
+
+Если посмотреть на этот показатель в сравнении с выбранными нами бывшими «братскими республиками», то в 1990 году Украина находилась на третьем месте (6763 дол.США), уступая Литве и России (8695 и 8013 дол.США соответственно). Но к 2015 году Украина опустилась в этом рейтинге на последнее место (7940 дол.США), отставая уже более чем в два раза (!) от Беларуси, поднявшейся на четвертое место (17697 дол.США) и почти в 4 раза – от лидера – Литвы (27680 дол.США). (Рис.20). Прирост ВВП Украины за 25 лет составил всего 14%, в то время как другие выбранные для сравнения страны бывшего СССР в среднем показали 70% прироста ВВП за тот же период (см. Рис.20а). 
+
+##### Рис.20. ВВП по некоторым странам. 1992-2015 гг. (доллары США)[^footnote19]
+```{r}
+gdp_data <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NY.GDP.MKTP.CD", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)  
+
+for(i in 1:118){
+       gdp_data$value[i] <- gdp_data$value[i]/1000000000 
+}
+
+temp <- grep("1992|1995|2000|2010|2015", gdp_data$date)
+gdp_selectedY <- data.frame()
+
+for(i in temp){
+        gdp_selectedY <- rbind(gdp_selectedY, gdp_data[i,])
+}
+
+colnames(gdp_selectedY) <- c("GDP Billions USD", "Year", "Country")
+
+gdp_selectedY
+
+ggplot(data = gdp_selectedY, aes(x = Country, y = `GDP Billions USD`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("Billions USD")+
+        ggtitle("Fig.20. GDP  some countries. 1992-2015")+
+        
+        coord_flip()+
+        
+        facet_grid(Year~.)
+```
+
+##### Рис.20a. Прирост ВВП 2015 г по сравнению с 1992 г (%) 
+```{r}
+
+GDPgrowth <- data.frame()
+countries <- c("Belarus", "Lithuania", "Latvia", "Russian Federation", "Ukraine")
+
+for(i in countries){
+        temp <- gdp_data %>% filter(country == i)
+        c <- nrow(temp)
+        temp2 <- data.frame(temp[1,3], ((temp[c,1]/temp[1,1])-1)*(-100))
+        GDPgrowth <- rbind(GDPgrowth, temp2)
+}
+
+colnames(GDPgrowth) <- c("Country", "% of GDP growth")
+
+GDPgrowth
+
+ggplot(data = GDPgrowth, aes(x = Country, y = `% of GDP growth`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("% of growth")+
+        ggtitle("Fig.20a. GDP growth in 2015 compared with 1990 (%)")
+        
+```
+
+За годы независимости друг от друга, не только абсолютная величина ВВП в этих странах значительно изменилась. Так же некоторые изменения претерпела и структура ВВП. Доля промышленности в ВВП сильно сократилась во всех анализируемых странах. Украина, некогда наиболее промышленая страна СССР претерпела самый большой процесс деиндустриализации. Доля промышленности в ВВП сократилась с 51% в 1992 году, до 26% в 2015 г. Самое меньшее скращение доли промышленности в ВВП претерпела Белорусия, упав всего на 8%, с 47,7% до 39,9%. 
+
+Доля сельского хозяйства значительно уменьшилась во всех странах без исключения, и, соответственно, доля сферы услуг выросла почти в 2 раза  (см.Рис.21-23)
+
+##### Рис.21. Доля промышленности в ВВП страны (%)[^footnote20].
+```{r}
+industry_gdp <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NV.IND.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+temp <- grep("1992|1995|2000|2010|2015", industry_gdp$date)
+industry_gdp_selectedY <- data.frame()
+
+for(i in temp){
+        industry_gdp_selectedY <- rbind(industry_gdp_selectedY, industry_gdp[i,])
+}
+
+colnames(industry_gdp_selectedY) <- c("Industry (% of GDP)", "Year", "Country")
+
+industry_gdp_selectedY
+
+ggplot(data = industry_gdp_selectedY, aes(x = Country, y = `Industry (% of GDP)`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("%")+
+        ggtitle("Fig.21. Industry, value added (% of GDP)")+
+        coord_flip()+
+        facet_grid(Year~.)
+```
+
+
+##### Рис.22. Доля сельского хозяйства в ВВП страны (%)[^footnote21].
+```{r}
+agro_gdp <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NV.AGR.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+temp <- grep("1992|1995|2000|2010|2015", agro_gdp$date)
+agro_gdp_selectedY <- data.frame()
+
+for(i in temp){
+        agro_gdp_selectedY <- rbind(agro_gdp_selectedY, agro_gdp[i,])
+}
+
+colnames(agro_gdp_selectedY) <- c("Agriculture (% of GDP)", "Year", "Country")
+
+agro_gdp_selectedY
+
+ggplot(data = agro_gdp_selectedY, aes(x = Country, y = `Agriculture (% of GDP)`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("%")+
+        ggtitle("Fig.22. Agriculture, value added (% of GDP)")+
+        coord_flip()+
+        facet_grid(Year~.)
+```
+
+
+##### Рис.23. Доля сферы услуг в ВВП страны (%)[^footnote22].
+```{r}
+service_gdp <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NV.SRV.TETC.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+temp <- grep("1992|1995|2000|2010|2015", service_gdp$date)
+service_gdp_selectedY <- data.frame()
+
+for(i in temp){
+        service_gdp_selectedY <- rbind(service_gdp_selectedY, service_gdp[i,])
+}
+
+colnames(service_gdp_selectedY) <- c("Services (% of GDP)", "Year", "Country")
+
+service_gdp_selectedY
+
+ggplot(data = service_gdp_selectedY, aes(x = Country, y = `Services (% of GDP)`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Countries")+
+        ylab("%")+
+        ggtitle("Fig.23. Services, etc., value added (% of GDP)")+
+        coord_flip()+
+        facet_grid(Year~.)
+```
+
+Внешний долг как % ВВП страны вырос во всех анализируемых странах. Наибольшей величины он достиг в Латвии (почти 135% от ВВП), на втором месте Украина (81%), не на много отстала от Украины и Литва (72,6%), Беларусь и особенно Россия выглядят на их фоне как страны, не живущие «в долг» - (56 и 31% соответственно). Внешний долг как % ВВВ возрос за последние 10 лет возрос для всех стран, кроме России. Так, для Беларсуи – почти  в 3 раза, для Латвии, Литвы и Украины – в 2 раза, а вот для России этот показатель уменьшился на 10%. (Рис.24)[^footnote23].
+
+##### Рис.24. Внешний долг как % к ВВП
+```{r}
+external_debt <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "GC.DOD.TOTL.GD.ZS", startdate = 1990, enddate = 2015) %>% select(value, date, country)
+
+colnames(external_debt) <- c("Government debt (% of GDP)", "Year", "Country")
+
+#Данные внешнего государственного долга по странам и периодам
+external_debt$Year <- as.factor(external_debt$Year)
+external_debt
+
+ggplot(data = external_debt, aes(x = Year, y = `Government debt (% of GDP)`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Year")+
+        ylab("%")+
+        ggtitle("Fig.24. Central government debt, total (% of GDP)")+
+        facet_grid(Country~., scales = "free")
+```
+
+
+При этом, логично ожидать, что одним из эффектов экономических реформ, в частности – приватизации, должно было стать быстрое и эффективное развитие частного сектора. Но, к сожалению, по крайней мере, для Украины это не оправдалось. Так, по данным ЕБРР, доля частного сектора в ВВП Украины в 2010 году по сравнению с 2004 уменьшилась на 5 % и составила 60%, вместо 65% в предыдущем периоде  (рис.25)[^footnote24]. То есть, другими словами, государственные компании, даже потеряв в количестве, приобрели в эффективности работы, а вот предприятия, перешедшие из рук государства к частному собственнику, не то что не добавили частному сектору эффективности, а наоборот – потянули его на дно. Возможно, просто из-за того, что большинство их перестало существовать как промышленные предприятия, были ликвидированы и разпилины на металалом?
+
+##### Рис.25. Доля частных компаний в ВВП Украины (%)
+```{r}
+GDPprivat
+GDPprivat$`% of GDP by private companies` <- as.numeric(as.character(GDPprivat$`% of GDP by private companies`))
+class(GDPprivat$`% of GDP by private companies`)
+
+ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, group = 1))+
+        geom_line(colour="darkblue", size = 1)+
+        geom_point(colour = "darkgreen", size = 2)+
+        xlab("Year")+
+        ylab("%")+
+        ggtitle("Fig.25. Private sector share in GDP (in per cent)")
+
+```
+
+При этом, отдельно стоит отметить, что в 2010 году количество государственных предприятий составляло всего 2,3% от общего числа предприятий Украины. То есть, другими словами, 2,3% предприятий (государственные) генерировали 40% ВВП страны, а 97% предприятий (частные) – 60% ВВП Украины . Для наглядности отобразим это на диаграмме (рис 26).
+
+##### Рис.26. Доли частных и государственных предприятий в общем количестве предприятий и в ВВП Украины
+```{r}
+GDPprivat
+GDPprivat$`% of GDP by private companies` <- as.numeric(as.character(GDPprivat$`% of GDP by private companies`))
+class(GDPprivat$`% of GDP by private companies`)
+
+ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, group = 1))+
+        geom_line(colour="darkblue", size = 1)+
+        geom_point(colour = "darkgreen", size = 2)+
+        xlab("Year")+
+        ylab("%")+
+        ggtitle("Fig.25. Private sector share in GDP (in per cent)")
+
+```
+
+
+# СТРУКТУРНЫЕ ИЗМЕНЕНИЯ В ТРУДОВЫХ РЕСУРСАХ УКРАИНЫ
+*Источником данных за последние годы для графиков 27 и 28 стали официальные данные госкомстата Украины, которые публикуются в разделе статистическая информация/ демографические и социальные показатели/ рынок труда, (http://www.ukrstat.gov.ua/), при этом данные о более ранних годах (1990-2000гг) авторам пришлось брать уже из учебников, содержащих соответствующие разделы (например, Аграрна економіка і ринок. Іванух Р. А., Дусановський С. Л., Білан Є. М. - Тернопіль: "Збруч", 2003. - 305 с.м http://buklib.net/books/31118/). Для удобства читателя, авторские таблицы, составленные по этим данным, можно загрузить на нашем сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/labour.xlsx.* 
+*Данные графиков 29-31 и 37а-в были взяты из ежегодного отчета Государственного комитета статистики Украины «Праця Украины 2015, который на момент последней редакции статьи можно было загрузить на сайте Комитета Статистики в разделе  Публикации / рынок труда/ Праця України 2015/ (Разделы 6 и 7)  http://www.ukrstat.gov.ua/druk/publicat/kat_u/publ11_u.htm . Этот отчет содержит большое количество статистических данных о занятости населения Украины в разрезе  территориальных, юридических и экономических аспектов.* 
+*Данные для построения графиков 32-35 взяты из глобальной международной базы данных World Bank На момент последней редакции данной работы, эти и другие данные были доступны по ссылке http://datatopics.worldbank.org/jobs/* 
+*Графики 36-37 были построены на основе данных глобальной статистической базы NationMaster http://www.nationmaster.com/. Там можно отследить указанные показатели по многим странам.*
+
+К сожалению, за последние 25 лет классификация занятости населения по отраслям экономики менялась не однократно.  В разные периоды, например, «образование», относили к «науке», выделяли в отдельную строку отчетов, присоединяли к «культуре и спорту», объединяли с «социальными работниками». «Культуру и спорт» так же в разные периоды либо выделяли отдельно, либо объединяли с индустрией досуга. Досуг относился и к «другим услугам», и  к «администрированию». «Социальных работников» в одни периоды объединяли с работниками образования, в другие периоды - с работниками здравоохранения, или так же относили к категории «другое». Из категории «транспорт и связь» выделили отдельно «телекоммуникацию», присовокупив к ней, однако, информацию.   Учитывая такие структурные изменения в самих формах статистической отчетности детальный ретроспективный анализ вплоть до 1990 года не возможен ввиду отсутствия данных, пригодных для сравнения. Последние изменения в структуре отчетности были проведены в 2011 году, но последние 5 лет не отражают  всех тенденций структурных изменений в занятости населения Украины.
+Единственные группы классификации занятости населения по отраслям экономики, которые не претерпевали «объединений» и «разделений», и потому остались доступными для ретроспективного анализа - это сельское хозяйство и промышленность.  По этому, авторы предлагают воспользоваться международной практикой, характерной для большинства глобальных баз данных. В них, для простоты, в 2 отдельные группы выделяют, собственно, имеющиеся и у нас «промышленность» и «сельское хозяйство», а к третьей группе - «услуги» - относят все остальное. 
+И так, за весь период независимости количество населения Украины, занятое в экономической деятельности, сократилось более чем на на 17 млн.кадров (с 25,4 в 1990 году до 8,3 млн. в 2015 году). (см.табл.2). При том, что в общем  численность населения Украины по данным официальной статистики[^footnote25] сократилась на 9 млн.чел. (с 51,8 в 1990 году до 42,9 млн. в 2015году). А численность населения трудоспособного возраста – всего на 4 млн. человек (30,3 млн. в 1990 году до 26,6 млн. в 2015 году.)[^footnote26]. 
+При этом за 25 лет более 5 млн. специалистов (это почти 70% по сравнению с 1990 годом) потеряла промышленность Украины  и 4,36 млн. специалистов (87% по сравнению с 1990 годом) потеряло сельское хозяйство (см.Таблицу 2)[^footnote27]. Вообще, изъятие более 17 млн. кадров из разных областей - невосполнимая потеря для экономики Украины. И если потерю 4 млн. кадрового потенциала объясняют естественные причины (выход на пенсию), то 13 млн.человек - это граждане, которые перешли в нерегламентированную и нелегальную занятость, из грамотных инженеров, технологов, производственников, переквалифицировавшись в неумелых менеджеров по продажам «всего, чего изволите», выехали на заработки за границу, или пополнили ряды безработных (Рис.27)[^footnote25].
+
+##### Рис. 27. Сравнение численности населения Украины, занятого в экономической деятельности с численностью населения трудоспособного возраста 1990-2015 гг.
+```{r}
+
+```
 
 
 
@@ -568,4 +981,39 @@ ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, 
 
 [^footnote10]: http://voxukraine.org/2015/01/23/outsourcing-privatization-attracting-capital-while-raising-efficiency/
 
+[^footnote11]: Авторская таблица, составленная по данным отчета Фонда государственного имущества Украины за 2015 год доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/privatization_contracts_over_control.xlsx
+
+[^footnote12]: Авторская таблица с данными доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/violations_in_%20the_%20contracts_over_control.xlsx
+
+[^footnote13]: Авторская таблица с данными доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/penalties_per_violation_in_the_contracts_over_control.xlsx
+
+[^footnote14]: Авторы хотели бы проанализировать все показатели (в первую очередь, сохранение основных видов деятельности и сохранение объемов производства.), но, к сожалению, подробная открытая статистика для этих показателей в нашей стране отсутствует. Данные, и то не полные (не все года), авторы смогли собрать из тех же отчетов Фонда госимущества только по приведенным в этой работе показателям: объем привлеченных инвестиций, количество предприятий, взявших обязательства касательно рабочих мест, вновь созданные рабочие места).
+ 
+[^footnote15]: Авторская таблица, составленная на основе данных отчета Фонда государственного имущества Украины за 2015 год доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/investments_in_privatized_companies.xlsx 
+
+[^footnote16]: Авторская таблица, составленная на основе данных отчета Фонда государственного имущества Украины за 2015 год доступна по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/investments_in_privatized_companies.xlsx
+
+[^footnote17]: http://ua.censor.net.ua/news/405508/u_slujbi_zayinyatosti_na_obliku_stoyit_na_10_menshe_lyudeyi_nij_mynulogo_roku_rozenko
+
+[^footnote18]: http://data.worldbank.org/indicator/NY.GDP.PCAP.CD
+
+[^footnote19]: http://data.worldbank.org/indicator/NY.GDP.PCAP.CD
+
+[^footnote20]: http://data.worldbank.org/indicator/NV.IND.TOTL.ZS
+
+[^footnote21]: http://data.worldbank.org/indicator/NV.AGR.TOTL.ZS
+
+[^footnote22]: http://data.worldbank.org/indicator/NV.SRV.TETC.ZS
+
+[^footnote23]: http://data.worldbank.org/indicator/GC.DOD.TOTL.GD.ZS
+
+[^footnote24]: http://www.ebrd.com/what-we-do/economic-research-and-data/data/forecasts-macro-data-transition-indicators.html. Авторская таблица доступна для скачивания https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/GDP_by_private_companies_ua_by_year.xlsx 
+
+[^footnote25]: http://www.ukrstat.gov.ua/
+
+[^footnote26]: https://ukrstat.org/uk/operativ/operativ2013/fin/kp_ed/kp_ed_u/arh_kzp_ed_u.htm
+
+[^footnote27]: http://buklib.net/books/31118/ . Авторская таблица доступна для скачивания по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/labour.xlsx
+
+[^footnote28]: Данные Государственного комитета статистики Украины за соответствующий год http://www.ukrstat.gov.ua/. Авторская таблица доступна для скачивания на сайте employed_in_economic_activity
 
