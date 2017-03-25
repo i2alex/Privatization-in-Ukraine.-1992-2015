@@ -245,6 +245,7 @@ testDF <- testDF[-1,]
 ProcessingIndustry <- testDF
 
 # 5. Private sector share in GDP (in per cent)  
+GDPprivat2 <- GDPprivat 
 GDPprivat <- data.frame(GDPprivat2[2,3],GDPprivat2[5,3])
 for(i in 4:9){
         temp <- data.frame(GDPprivat2[2,i],GDPprivat2[5,i])
@@ -928,17 +929,28 @@ ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, grou
 При этом, отдельно стоит отметить, что в 2010 году количество государственных предприятий составляло всего 2,3% от общего числа предприятий Украины. То есть, другими словами, 2,3% предприятий (государственные) генерировали 40% ВВП страны, а 97% предприятий (частные) – 60% ВВП Украины . Для наглядности отобразим это на диаграмме (рис 26).
 
 ##### Рис.26. Доли частных и государственных предприятий в общем количестве предприятий и в ВВП Украины
-```{r}
-GDPprivat
-GDPprivat$`% of GDP by private companies` <- as.numeric(as.character(GDPprivat$`% of GDP by private companies`))
-class(GDPprivat$`% of GDP by private companies`)
+```{r, fig.width=15}
+d1 <- filter(OwnershipData, year == 2010)
+d2 <- filter(GDPprivat, Year == "2010")
+temp <- data.frame(2010, 40)
+names(temp) <- names(d2)
+d2 <- rbind(temp, d2)
+d2$enterprise.ownership <- c("state", "private") 
 
-ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, group = 1))+
-        geom_line(colour="darkblue", size = 1)+
-        geom_point(colour = "darkgreen", size = 2)+
-        xlab("Year")+
+p1 <- ggplot(data = d1, aes(x = enterprise.ownership, y = number.of.enterprices, fill = enterprise.ownership))+
+        geom_bar(colour="black", stat = "identity")+
+        guides(fill=FALSE)+
+        xlab("Enterprise ownership")+
         ylab("%")+
-        ggtitle("Fig.25. Private sector share in GDP (in per cent)")
+        ggtitle("The share of private and public enterprises in the total number of enterprises in Ukraine (2010)")
+
+p2 <- ggplot(data = d2, aes(x = enterprise.ownership, y = `% of GDP by private companies`, fill = enterprise.ownership))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Enterprise ownership")+
+        ylab("%")+
+        ggtitle("Share of private and public sector in GDP (2010)")       
+
+grid.arrange(p1, p2, ncol = 2)
 
 ```
 
@@ -956,6 +968,7 @@ ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, grou
 
 ##### Рис. 27. Сравнение численности населения Украины, занятого в экономической деятельности с численностью населения трудоспособного возраста 1990-2015 гг.
 ```{r}
+Labour
 
 ```
 
