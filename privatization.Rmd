@@ -58,6 +58,13 @@ if(!file.exists("labour.xlsx")){
         download.file(url, destfile = "labour.xlsx", method = "curl")
 }
 
+## 4a. Data on the number of people employed in economic activities
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/84f82fa1/Data/employed_in_economic_activity.xlsx"
+if(!file.exists("employed_in_economic_activity.xlsx")){
+        download.file(url, destfile = "employed_in_economic_activity.xlsx", method = "curl")
+}
+
+
 ## 5. Private sector share in GDP (in per cent)  
 #url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/GDP_by_private_companies_ua_by_year.xlsx"
 #if(!file.exists("GDP_by_private_companies_ua_by_year.xlsx")){
@@ -148,6 +155,10 @@ ProcessingIndustry <- read.xlsx("Processing industry_fin.xlsx", sheetName="proce
 FixedAssetsInvestments <- read.xlsx("investments in the fixed assets.xlsx", sheetName="investments in the fixed assets",header=TRUE)
 ## 4. Data on the number of people employed in various sectors of the economy for years
 Labour <- read.xlsx("labour.xlsx", sheetName="labour of ukraine", header=TRUE)
+
+## 4a. Data on the number of people employed in economic activities
+Employed_in_economic <- read.xlsx("employed_in_economic_activity.xlsx", sheetName="employed in activities", header=TRUE)
+
 ## 5. Private sector share in GDP (in per cent) 
 #GDPprivat <- read.xlsx("GDP_by_private_companies_ua_by_year.xlsx", sheetName="GDP by private companies in Ukr", header=TRUE)
 
@@ -565,8 +576,8 @@ avercost
 ```
 
 ##### Рис.10. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)
-```{r}
-ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, fill = Year))+
+```{r, fig.height=5, fig.width=10}
+ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, fill = `Nominal thousand USD for 1 company`))+
         geom_bar(colour="black", stat = "identity")+
         
         coord_cartesian(ylim=c(0, 4000))+
@@ -942,7 +953,7 @@ p1 <- ggplot(data = d1, aes(x = enterprise.ownership, y = number.of.enterprices,
         guides(fill=FALSE)+
         xlab("Enterprise ownership")+
         ylab("%")+
-        ggtitle("The share of private and public enterprises in the total number of enterprises in Ukraine (2010)")
+        ggtitle("The share of private and public enterprises in the total number of enterprises(2010)")
 
 p2 <- ggplot(data = d2, aes(x = enterprise.ownership, y = `% of GDP by private companies`, fill = enterprise.ownership))+
         geom_bar(colour="black", stat = "identity")+
@@ -968,9 +979,157 @@ grid.arrange(p1, p2, ncol = 2)
 
 ##### Рис. 27. Сравнение численности населения Украины, занятого в экономической деятельности с численностью населения трудоспособного возраста 1990-2015 гг.
 ```{r}
-Labour
+Employed_in_economic$year <- as.factor(Employed_in_economic$year)
+Employed_in_economic
+ggplot(data = Employed_in_economic, aes(x = year, y = number, fill = category))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Year")+
+        ylab("Million people")+
+        ggtitle("The population engaged in economic activity and the working-age pop. in total") 
 
 ```
+
+```{r}
+tmp_category <- c("Industry", "Agriculture", "Services")
+labour_lost_perc <- data.frame()
+labour_lost <- data.frame()
+
+# Создание таблицы потерь рабочих мест по отрослям в процентых показателях 
+for(i in tmp_category) {
+temp <- Labour %>% filter(Catergory== i) %>% summarise(Catergory= i, `% of lost` = (Million.People[4]/Million.People[1]-1)*(-100))
+labour_lost_perc <- rbind(labour_lost_perc, temp)
+}
+
+# Создание таблицы потерь рабочих мест по отрослям в количественных показателях 
+for(i in tmp_category) {
+temp <- Labour %>% filter(Catergory== i) %>% summarise(Catergory= i, `Millions peple of lost` = Million.People[1]-Million.People[4])
+labour_lost <- rbind(labour_lost, temp)
+}
+
+# Количество людей задействованных в той или иной экономической активности в 1990 и в 2015 
+Labour
+# Процент потерь рабочих мест с 1990 до 2015 года в Промышленности, Сельском хозяйстве и Сервисе 
+labour_lost_perc
+# Количество потерь рабочих мест в тех-же отраслях украинской экономике с 1990 по 2015 года
+labour_lost
+
+```
+
+
+##### Рис. 28. Занятость населения Украины по отраслям экономики 1990-2015 гг (млн.чел.)
+```{r}
+ggplot(data = Labour, aes(x = Year, y = Million.People))+
+        geom_line(aes(colour = Catergory))+
+        geom_point()+
+        xlab("Year")+
+        ylab("Million People")+
+        ggtitle("Fig.28. Employment of the population of Ukraine by economic sectors 1990-2015")
+```
+
+При этом доля государственного и коммунального секторов по количеству занятых в них довольно велика –  44% всех работающих (20,7% приходятся на государственный сектор, 23,2% - на коммунальный). Остальные 56% трудятся в частном секторе, а так же в структурах с корпоративным управлением (акционерных обществах), которые могут включать в себя как государственных так и частных собственников. (более детально см.рис.29)[^footnote29].
+
+##### Рис.29. Структура занятости населения Украины в разрезе организационных форм в 2015 г (%).
+```{r}
+
+```
+
+В промышленности Украины на государственный и коммунальный сектора приходилось почти 12% работающих в Украине (5,4% и 6,4% соответственно), а 88%  - на частный сектор и структуры с корпоративным управлением (акционерные общества), которые могут включать в себя как государственных так и частных собственников. (более детально см.Рис.30. )
+
+##### Рис.30. Структура занятости в промышленности Украины в разрезе организационных форм в 2015г (%). 
+```{r}
+
+```
+
+В сельском хозяйстве на долю государственного и коммунального секторов приходилось почти 15% занятых (13,7% и 1,1% соответственно) и чуть более 85% на частный сектор, а так же структуры с корпоративным управлением (более детально см.рис.31)
+
+##### Рис.31. Структура занятости в сельском хозяйстве Украины в разрезе организационных форм в 2015 (%). 
+```{r}
+
+```
+
+Если сравнить Украину с другими выбранными странами бывшего СССР, то тенденции в изменении отраслевой структуры занятости сходны. Наблюдается уменьшение доли сельского хозяйства (на 3-5%), уменьшение доли промышленности (на 1-3%), и соответственно, увеличение доли сферы услуг. (Рис.32-34)
+
+##### Рис.32. Доля промышленности в общем количестве рабочих мест страны (%)[^footnote30].
+```{r, fig.height=5, fig.width=10}
+industry_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.IND.EMPL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+colnames(industry_share_labor) <- c("Employment in industry (% of total employment)", "Year", "Country")
+
+# Данные по проценту занятых в промышленности в некоторых странах бывшего СССР с 1990 г. по 2014 г.
+industry_share_labor
+
+ggplot(data = industry_share_labor, aes(x = Year, y = `Employment in industry (% of total employment)`, group=1))+
+        geom_line(aes(colour = Country), size=1)+
+        geom_point(colour = "darkblue", size=1)+
+        xlab("Year")+
+        ylab("% of total employment")+
+        ggtitle("Fig.32. Employment in industry (% of total employment)")+
+        facet_grid(Country~., scales = "free")
+
+```
+
+##### Рис.33. Доля сельского хозяйства в общем количестве рабочих мест страны (%)[^footnote31].
+```{r, fig.height=5, fig.width=10}
+agriculture_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.AGR.EMPL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+colnames(agriculture_share_labor) <- c("Employment in agriculture (%)", "Year", "Country")
+
+# Данные по проценту занятых в сельском хозяйстве в некоторых странах бывшего СССР с 1990 г. по 2014 г.
+agriculture_share_labor
+
+ggplot(data = agriculture_share_labor, aes(x = Year, y = `Employment in agriculture (%)`, group=1))+
+        geom_line(aes(colour = Country), size=1)+
+        geom_point(colour = "darkblue", size=1)+
+        xlab("Year")+
+        ylab("% of total employment")+
+        ggtitle("Fig.33. Employment in agriculture (% of total employment)")+
+        facet_grid(Country~., scales = "free")
+
+```
+
+##### Рис.34. Доля сферы услуг в общем количестве рабочих мест страны (%)[^footnote32].
+```{r, fig.height=5, fig.width=10}
+services_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.SRV.EMPL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+colnames(services_share_labor) <- c("Employment in services (% of total employment)", "Year", "Country")
+
+# Данные по проценту занятых в сфере услуг в некоторых странах бывшего СССР с 1990 г. по 2014 г.
+services_share_labor
+
+ggplot(data = services_share_labor, aes(x = Year, y = `Employment in services (% of total employment)`, group=1))+
+        geom_line(aes(colour = Country), size=1)+
+        geom_point(colour = "darkblue", size=1)+
+        xlab("Year")+
+        ylab("% of total employment")+
+        ggtitle("Fig.34. Employment in services (% of total employment)")+
+        facet_grid(Country~., scales = "free")
+
+```
+
+Наиболее высок официальный уровень безработицы прибалтийских странах (почти 12%), в Украине он составил в 2013 году 7,5%, сократившись за 10 лет на 1,5%. Самый низкий уровень безработицы в Беларуси, который составляет всего 0,6% (см.рис.35)[^footnote33].
+
+##### Рис.35. Уровень безработицы (%).
+```{r, fig.height=5, fig.width=10}
+unemployment <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.UEM.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+colnames(unemployment) <- c("Unemployment (% of total labor force)", "Year", "Country")
+
+# Данные по безработице в некоторых странах бывшего СССР с 1990 г. по 2014 г.
+unemployment
+
+ggplot(data = unemployment, aes(x = Year, y = `Unemployment (% of total labor force)`, group=1))+
+        geom_line(aes(colour = Country), size=1)+
+        geom_point(colour = "darkblue", size=1)+
+        xlab("Year")+
+        ylab("% of Unemployment")+
+        ggtitle("Fig.35. Unemployment, total (% of total labor force)")+
+        facet_grid(Country~., scales = "free")
+
+```
+
+
+
+
 
 
 
@@ -1029,4 +1188,15 @@ Labour
 [^footnote27]: http://buklib.net/books/31118/ . Авторская таблица доступна для скачивания по ссылке https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/labour.xlsx
 
 [^footnote28]: Данные Государственного комитета статистики Украины за соответствующий год http://www.ukrstat.gov.ua/. Авторская таблица доступна для скачивания на сайте employed_in_economic_activity
+
+[^footnote29]:  Сайт государственного комитета статистики Украины http://www.ukrstat.gov.ua/  (Публикации/рынок труда/ Праця України 2015/) (Разделы 6 и 7)  http://www.ukrstat.gov.ua/druk/publicat/kat_u/publ11_u.htm .
+
+[^footnote30]: Данные Мирового Банка - http://data.worldbank.org/indicator/SL.IND.EMPL.ZS
+
+[^footnote31]: Данные Мирового Банка - http://data.worldbank.org/indicator/SL.AGR.EMPL.ZS
+
+[^footnote32]: Данные Мирового Банка - http://data.worldbank.org/indicator/SL.SRV.EMPL.ZS
+
+[^footnote33]: Данные Мирового Банка - http://data.worldbank.org/indicator/SL.UEM.TOTL.ZS
+
 
