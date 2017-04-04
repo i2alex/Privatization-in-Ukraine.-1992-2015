@@ -185,6 +185,21 @@ if(!file.exists("monopolization level by economic activity.xlsx")){
         download.file(url, destfile = "monopolization level by economic activity.xlsx", method = "curl")
 }
 
+## 23. Wearout of fixed assets (%) (Fig.70-72)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/6bd2543c/Data/fixed%20assets.xlsx"
+if(!file.exists("fixed assets.xlsx")){
+        download.file(url, destfile = "fixed assets.xlsx", method = "curl")
+}
+
+## 24. % of offshore zones investments in Ukraine (Fig.74)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/6bd2543c/Data/fixed%20assets.xlsx"
+if(!file.exists("fixed assets.xlsx")){
+        download.file(url, destfile = "fixed assets.xlsx", method = "curl")
+}
+
+
+Depreciation_fixed_assets <- read.xlsx("offshore zones investments.xlsx", sheetName="offshore investments", header=TRUE)
+
 #----------------------------------------------------------------------------------------------------------------
 
 #READ FILES
@@ -239,6 +254,10 @@ Monopoly_ua <- read.xlsx("monopoly by year.xlsx", sheetName="market type", heade
 Monopoly_by_branches <- read.xlsx("Monopolization by the branches of national economy.xlsx", sheetName="monoply by branch of nationecon", header=TRUE)
 ## 22. Monopolization level by economic activity
 Monopoly_by_activity <- read.xlsx("monopolization level by economic activity.xlsx", sheetName="monopoly by econ.act.", header=TRUE)
+## 23. Wearout of fixed assets (%) (Fig.70-72)
+Depreciation_fixed_assets <- read.xlsx("fixed assets.xlsx", sheetName="wearout by ec.act.", header=TRUE)
+## 24. % of offshore zones investments in Ukraine (Fig.74)
+Depreciation_fixed_assets <- read.xlsx("offshore zones investments.xlsx", sheetName="offshore investments", header=TRUE)
 
 ```
 
@@ -2276,8 +2295,7 @@ ggplot(data = f.a.i.year, aes(x = Year, y = `Million USD`, group = 1))+
 
 
 ##### Рис.69. Инвестиции в основные фонды предприятий по видам экономической деятельности по накопительному итогу с 2004 по 2015гг. (млн.ном.дол.США)
-```{r, fig.height=2, fig.width=5}
-FixedAssetsInvestments
+```{r}
 
 category <- c("Agriculture, hunting and forestry", "Industrial production", "Construction", "Trade; repair of motor vehicles, household appliances and personal demand items", "Activity of hotels and restaurants", "Activity of transport and communications", "activity of mail and communications", "Financial activity", "Real estate activities, renting, engineering and provision of services to businessmen", "Public administration", "Education", "other serivices")
 
@@ -2305,14 +2323,204 @@ ggplot(data = f.a.i.category, aes(x = Category, y = `Million USD`, fill = Catego
 
 ```
 
+С 2013 года как отдельный вид экономической деятельности выносится «профессиональная, научная и техническая деятельность»,  с показателем инвестиций по накопительному итогу за 3 года в 737 млн.дол.США. К сожалению, неизвестно, в каких отраслях экономики данный крайне интересный для анализа показатель находился раннее, и отследить его динамику за более длительный период не представляется возможным. Однако, если анализировать только три года (с 2013 по 2015гг), то инвестиции в данный показатель составил бы почти 1,5% общего объема инвестиций, заняв 3-е место с конца после здравоохранения и образования. 
+При этом интересно сравнить данный «рейтинг» с динамикой роста износа основных средств украинских предприятий. 
+Так, в целом по всем предприятиям, износ основных средств с 2000 по 2012 г. возрос с 47,3 в 2000 году  до 76,7% в 2012. (Рис.70)
+
+##### Рис. 70. Степень износа основных средств украинских предприятий по годам (%).
+
+```{r}
+# Creating a data table with comparative information on depreciation of fixed assets of Ukrainian enterprises 
+# Создание таблицы данных со сравнительнной информацией износа основных средств украинских предприятий
+Depreciation_fixed_assets$Year <- as.factor(Depreciation_fixed_assets$Year)
+Depreciation_fixed_assets$Depreciation.of.fixed.assets..... <- as.factor(Depreciation_fixed_assets$Depreciation.of.fixed.assets.....)
+depreciation.fa <- Depreciation_fixed_assets[25:26,] 
+
+
+ggplot(data = depreciation.fa, aes(x = Year, y = `Depreciation.of.fixed.assets.....`))+
+        geom_bar(colour="darkblue", fill = "white", stat = "identity")+
+        xlab("Year")+
+        ylab("% of Depreciation")+
+        ggtitle("Fig. 70. Degree of depreciation of fixed assets of Ukrainian enterprises 
+                by years (%).")
+```
+
+**_Степень износа основных средств украинских предприятий по годам (%)**
+```{r}
+depreciation.fa
+```
+
+Просто катастрофический износ средств наблюдался в транспортной инфраструктуре и перевозках грузов – 96%. На втором месте находилась промышленность (57,3%) а так же строительство (55,1%), получающая на протяжении тех же лет практически в два раза больше инвестиций в основные фонды. Оптовая и розничная торговля, отели и рестораны выглядят самыми «обновленными» - 42% и 33,4% износа соответственно.   Отдельно необходимо отметить, что единственная отрасль – сельское хозяйство, за указанный период уменьшило износ основных средств 43,7% до 34,6%. (Рис.71). 
 
 
 
+##### Рис.71. Рейтинг степени износа основных средств по видам экономической деятельности  2012 г (%).
+
+```{r}
+# Creating a data table with comparative information on depreciation of fixed assets of Ukrainian enterprises 
+# Создание таблицы данных со сравнительнной информацией износа основных средств украинских предприятий
+depreciation.fa12 <- Depreciation_fixed_assets %>% filter(Year==2012)
+ 
+
+
+ggplot(data = depreciation.fa12[-13,], aes(x = 
+Economic.activity, y = `Depreciation.of.fixed.assets.....`))+
+        geom_bar( colour="darkblue", fill = "white", stat = "identity")+
+        xlab("Type of economic activity")+
+        ylab("% of Depreciation")+
+        coord_flip()+
+        scale_fill_brewer(palette="Pastel2") +
+        ggtitle("Fig.71. Rating of depreciation of fixed assets by types of 
+                economic activity 2012 (%).")
+
+```
+
+**_Рейтинг степени износа основных средств по видам экономической деятельности  2012 г (%)_**
+```{r}
+depreciation.fa12[-13,]
+```
+
+##### Рис. 72. Степень износа основных средств по видам экономической деятельности по годам (%).
+
+```{r}
+# Creating a data table with comparative information on depreciation of fixed assets of Ukrainian enterprises 
+# Создание таблицы данных со сравнительнной информацией износа основных средств украинских предприятий
+depreciation.faTotal <- Depreciation_fixed_assets[-c(25:26),] 
+ 
+
+
+ggplot(data = depreciation.faTotal, aes(x = 
+Year, y = `Depreciation.of.fixed.assets.....`))+
+        geom_bar( aes(fill=Economic.activity), stat = "identity")+
+        xlab("Type of economic activity")+
+        ylab("% of Depreciation")+
+        facet_grid(.~Economic.activity, scales = "free")+
+        ggtitle("Fig. 72. Depreciation of fixed assets by economic activities by year (%).")
+
+
+```
+
+**_Рейтинг степени износа основных средств по видам экономической деятельности  2012 г (%)_**
+```{r}
+depreciation.fa12[-13,]
+```
+
+
+# ИНОСТРАННЫЕ ИНВЕСТИЦИИ – ПАНАЦЕЯ ЛИ? 
+
+Иностранные инвестиции в Украине имеют тенденцию к росту, о чем свидетельствует линия тренда графика на рисунке 73. Конечно же, инвестиции крайне чувствительны как общемировым кризисам, так и к региональным, по этому, мы наблюдаем резкое падение уровня инвестиций в Украине в 2009 г, что, очевидно, объясняется общемировым финансовым кризисом того периода, а региональный военный конфликт, начавшийся в, уменьшил приток иностранных инвестиций в Украину 2014 году чуть ли не до уровня 2002 года.   Общая сумма инвестиций с 1992 по 2015 год составила почти 78 млрд.дол.США[^footnote70].
+
+
+##### Рис.73. Прямые иностранные инвестиции в Украину по годам (млн.дол.США)
+
+```{r}
+# Получаем данные Ворлд Банка для получения информации о прямых инвестициях в страны, разбитых по уровню доходу
+direct_investmentUA <- wb(country = c("UA"), indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2016, removeNA = TRUE) %>% select(value, date, country)
+
+# Для наглядности, делим все значения колонки value на 1 млрд
+direct_investmentUA$value <- sapply(direct_investmentUA$value, function(x) x/1000000000)
+
+direct_investmentUA$date <- as.numeric(direct_investmentUA$date)
+
+ggplot(data = direct_investmentUA, aes(x = date, y = value, group = 1))+
+        geom_line(colour="darkorange", size = 1)+
+        geom_point(aes(size = value, color = value))+
+       
+        xlab("Year")+
+        ylab("Billion USD")+
+        ggtitle("Fig.73. Foreign direct investment, net inflows.")
+
+
+```
+
+**_Прямые иностранные инвестиции в Украину по годам (млрд.дол.США)_**
+```{r}
+direct_investmentUA
+```
+
+Необходимо так же отметить, что за последние 10 лет в среднем 30% от общего объема так называемых «прямых иностранных инвестиций» в Украину - это инвестиции из таких стран как Кипр, Белиз, Виргинские Острова – оффшорных зон, т.е. это кругооборот денег, которые выходят из Украины через трансфертное ценообразование и заходят назад как прямые иностранные инвестиции.  (Рис.74)
+
+##### Рис.74. Доля оффшорных стран в прямых иностранных инвестициях в Украину по годам (%)[^footnote71]. 
+
+```{r}
+
+```
+
+**_Доля оффшорных стран в прямых иностранных инвестициях в Украину по годам (%)_**
+```{r}
+
+```
+
+
+Среднее ежегодное значение инвестиций на душу населения в Украине за последние 25 лет самые низкое среди выбранных для сравнения стран – всего 69 дол.США. Это в два раза меньше, чем в РФ и в 4,5 раза меньше, чем в Латвии. (Рис.75)[^footnote72].
+При этом, необходимо отметить, что если в 1995 году Латвия опережала РФ по количеству инвестиций на душу населения в 10 раз (!), то уже в 2014, РФ обогнала Латвию почти на 10% (рис.76)[^footnote73].
+
+
+##### Рис.75. Общий объем инвестиций как % от ВВП[^footnote74].
+
+```{r}
+# Рисунки 75-76 доклада удалены. 77 стал 75
+
+direct_investment <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NE.GDI.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+
+direct_investment$date <- as.numeric(direct_investment$date)
 
 
 
+ggplot(data = direct_investment, aes(x = date, y = value, fill = country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Year")+
+        ylab("Pieces")+
+        geom_smooth(method = "loess")+
+        scale_fill_brewer(palette="Pastel2") +
+        ggtitle("Fig.75. Gross capital formation (% of GDP)")+
+        
+        facet_grid(country~., scales = "free")
+
+```
 
 
+Из телевизионных выступлений, статей в прессе, других информационных потоков, говорящих о том, что «ЕС выделяет финансирование», «МВФ подтвердило очередной транш»,  «США готовы инвестировать в…», и так далее, автор уверен, у многих формируется ощущение, что «богатые» страны, в каком то роде помогают «бедным». Давайте рассмотрим инвестиции в разрезе уровня дохода стран, куда они попадают. 
+И так, по классификации Мирового Банка[^footnote75] к группе с «высоким уровнем дохода» относятся 79 стран мира, население которых составляет 1,2 млрд. человек. В группе с уровнем дохода «выше среднего» - 56 стран, общая численность населения которых - 2,6 млрд.чел. И в группах с уровнем дохода «низкий» и «ниже среднего» - 83 страны , общей численностью населения  3,6 млрд. 
+Если принять как гипотезу, что «богатые» страны охотно инвестируют в «бедные», и сравнить инвестиционные потоки по этим группам, то, исходя из указанных цифр, прямые иностранные инвестиции должны в большей степени поступать в страны с низким и ниже среднего уровнем дохода. Однако, как свидетельствует статистика того же Мирового Банка[^footnote76], на самом деле, все на оборот. Так, в 2015 году, инвестиции в страны с высоким уровнем дохода (79 стран, 1,2 млрд.чел. население) больше чем в 10 раз (!!!) превышали инвестиции в страны с уровнем дохода «низкий и ниже среднего» (83 страны, 3,6 млрд.чел. население).  И подобная динамика наблюдалась и 10 и 20 лет назад (см. Рис 78). 
+
+##### Рис.76. Инвестиции по уровню дохода стран 1990-2015 гг. (млрд.дол.США)
+
+```{r, fig.height=6, fig.width=3}
+# Подлючаемся к данным Ворлд Банка для получения информации о прямых инвестициях в страны, разбитых по уровню доходу
+investment_income.level <- wb(indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
+
+# Выделям строки со словом "income" и создем из них новую таблицу
+temp <- grep("income", investment_income.level$country)
+fdi <- data.frame()
+for(i in temp){
+        fdi <- rbind(fdi, investment_income.level[i,])
+}
+
+# Удаляем из таблицы лишние строки со словом "excluding", и другие строки
+temp <- grep("(excluding.)", fdi$country)
+for(i in temp){
+        fdi <- fdi[-i,]
+}
+
+fdi <- fdi[-c(1:26, 40:52, 105:130, 157:182),]
+
+# Для наглядности, делим все значения колонки value на 1 млрд
+fdi$value <- sapply(fdi$value, function(x) x/1000000000)
+
+# Создаем график 
+ggplot(data = fdi, aes(x = country, y = value, fill = country))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Year")+
+        ylab("Pieces")+
+        geom_smooth(method = "loess")+
+        scale_fill_brewer(palette="Pastel2") +
+        ggtitle("Fig. 76. Investments in the level of income of countries 1990-2015. (Billions of USD)")+
+        coord_flip()+
+        facet_grid(date~., scales = "free")
+
+```
 
 
 
@@ -2487,6 +2695,22 @@ http://www.segodnya.ua/blogs/kotlubaiblog/blog-kak-spasti-torgovoe-sudohodstvo-u
 [^footnote67]: Там же
 
 [^footnote68]:  http://www.ukrstat.gov.ua/operativ/menu/menu_u/ioz.htm и авторская таблица доступна для скачивания на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/investments%20in%20the%20fixed%20assets.xlsx. 
+
+[^footnote69]: Статистический ежегодник Украины за 2013 г., стр.81 library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf
+
+[^footnote70]:  http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
+
+[^footnote71]: http://www.ukrstat.gov.ua/operativ/operativ2016/zd/ivu/ivu_u/ivu0116.html. ДОБАВИТЬ ССЫЛКУ НА СОБСТВЕННЫЙ ИСТОЧНИК
+
+[^footnote72]: http://eucham.eu/charts/153-2015-03-foreign-direct-investment-per-capita-in-europe и глобальная база данных NationMaster http://www.nationmaster.com/country-info/stats/Economy/Foreign-direct-investment
+
+[^footnote73]: Там же 
+
+[^footnote74]:  http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS
+
+[^footnote75]: См.детальную классификацию стран Мировым Банком  http://blogs.worldbank.org/opendata/new-country-classifications
+
+[^footnote76]: http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
 
 
 
