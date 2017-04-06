@@ -218,7 +218,7 @@ if(!file.exists("fixed assets.xlsx")){
 }
 
 ## 24. Foreign direct investments (ukrstat) (Fig.73)
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/6bd2543c/Data/fixed%20assets.xlsx"
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/42b4d464/Data/direct%20investments%20ukrstat.xlsx"
 if(!file.exists("fixed assets.xlsx")){
         download.file(url, destfile = "direct.investments.goskomstat", method = "curl")
 }
