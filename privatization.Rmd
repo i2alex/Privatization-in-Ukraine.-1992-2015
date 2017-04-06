@@ -217,7 +217,13 @@ if(!file.exists("fixed assets.xlsx")){
         download.file(url, destfile = "fixed assets.xlsx", method = "curl")
 }
 
-## 24. % of offshore zones investments in Ukraine (Fig.74)
+## 24. Foreign direct investments (ukrstat) (Fig.73)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/6bd2543c/Data/fixed%20assets.xlsx"
+if(!file.exists("fixed assets.xlsx")){
+        download.file(url, destfile = "direct.investments.goskomstat", method = "curl")
+}
+
+## 25. % of offshore zones investments in Ukraine (Fig.74)
 url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/8c837f85/Data/offshore%20zones%20investments.xlsx"
 if(!file.exists("offshore zones investments.xlsx")){
         download.file(url, destfile = "offshore zones investments.xlsx", method = "curl")
@@ -280,7 +286,9 @@ Monopoly_by_branches <- read.xlsx("Monopolization by the branches of national ec
 Monopoly_by_activity <- read.xlsx("monopolization level by economic activity.xlsx", sheetName="monopoly by econ.act.", header=TRUE)
 ## 23. Wearout of fixed assets (%) (Fig.70-72)
 Depreciation_fixed_assets <- read.xlsx("fixed assets.xlsx", sheetName="wearout by ec.act.", header=TRUE)
-## 24. % of offshore zones investments in Ukraine (Fig.74)
+## 24. Foreign direct investments (ukrstat) (Fig.73)
+direct.investments.goskomstat <- read.xlsx("direct investments ukrstat.xlsx", sheetName="direct investments_ukr", header=TRUE)
+## 25. % of offshore zones investments in Ukraine (Fig.74)
 Offshore_investments <- read.xlsx("offshore zones investments.xlsx", sheetName="offshore investments", header=TRUE)
 
 ```
@@ -2434,6 +2442,16 @@ depreciation.fa12[-13,]
 
 Иностранные инвестиции в Украину государственный комитет статистики публикует «по накопительному итогу». С 1994 года, когда этот показатель стал учитываться комитетом статистики Украины, общие иностранные инвестиции к 2013 году составили 58,15 млрд.дол.США[^footnote70]. После того, как в 2014 году из статистики были исключены территории Крыма и зоны проведения АТО, этот показатель к концу 2015 году уменьшился до 43,37 млрд.дол.США. Т.е. только с точки зрения потери вложенных прямых иностранных инвестиций утрата этих регионов «стоила» экономике Украины почти 15 млрд.дол.США. 
 Иностранные инвестиции в Украине имели явную тенденцию к росту, о чем свидетельствует линия тренда графика на рисунке 73. Конечно же, инвестиции крайне чувствительны как общемировым кризисам, по этому, мы наблюдаем резкое падение уровня инвестиций в Украине в 2009 г, что, очевидно, объясняется общемировым финансовым кризисом того периода. 
+
+
+
+##### Рис.73. Прямые иностранные инвестиции в Украину по годам (млн.дол.США) по данным Госкомстата Украины
+```{r}
+
+```
+
+
+
 
 
 
