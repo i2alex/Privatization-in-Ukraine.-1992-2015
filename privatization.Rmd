@@ -59,6 +59,7 @@ library(xlsx)
 library(gridExtra)
 library(rvest)
 library(stringr)
+library(tidyr)
 ```
 
 ##Загрузка данных <a name="subparagraph2"></a>
@@ -220,7 +221,7 @@ if(!file.exists("fixed assets.xlsx")){
 ## 24. Foreign direct investments (ukrstat) (Fig.73)
 url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/42b4d464/Data/direct%20investments%20ukrstat.xlsx"
 if(!file.exists("fixed assets.xlsx")){
-        download.file(url, destfile = "direct.investments.goskomstat", method = "curl")
+        download.file(url, destfile = "direct investments ukrstat.xlsx", method = "curl")
 }
 
 ## 25. % of offshore zones investments in Ukraine (Fig.74)
@@ -229,6 +230,11 @@ if(!file.exists("offshore zones investments.xlsx")){
         download.file(url, destfile = "offshore zones investments.xlsx", method = "curl")
 }
 
+## 26. % of offshore zones and Netherlands investments in Ukraine (Fig.74a)
+url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/42b4d464/Data/offshore%20zones%20%2BNetherlands%20investments.xlsx"
+if(!file.exists("offshore zones +Netherlands investments.xlsx")){
+        download.file(url, destfile = "offshore zones +Netherlands investments.xlsx", method = "curl")
+}
 
 #----------------------------------------------------------------------------------------------------------------
 
@@ -290,6 +296,8 @@ Depreciation_fixed_assets <- read.xlsx("fixed assets.xlsx", sheetName="wearout b
 direct.investments.goskomstat <- read.xlsx("direct investments ukrstat.xlsx", sheetName="direct investments_ukr", header=TRUE)
 ## 25. % of offshore zones investments in Ukraine (Fig.74)
 Offshore_investments <- read.xlsx("offshore zones investments.xlsx", sheetName="offshore investments", header=TRUE)
+## 26. % of offshore zones and Netherlands investments in Ukraine (Fig.74a)
+Offshore.andN_investments <- read.xlsx("offshore zones +Netherlands investments.xlsx", sheetName="offshore investments", header=TRUE)
 
 ```
 
@@ -373,7 +381,44 @@ ProcessingIndustry <- testDF
 ProcessingIndustry$Value <- as.numeric(ProcessingIndustry$Value)
 #ProcessingIndustry$Year <- as.factor(ProcessingIndustry$Year)
 
-# 3. Private sector share in GDP (in per cent)  
+# 3. Organization of data for plotting Fig.2.
+## Create a function "count_priv_companies" that counts the number of privatized enterprises per group for a given period of time
+count_priv_companies <- function(year) {
+        # Download tha Data of privatized companies in the Ukraine
+        url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/265e2aa7/Data/privatization_ua.xlsx"
+        if(!file.exists("privatization_ua.xlsx")){
+                download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
+        }
+        # Read th Data 
+        PrivatizationUA <- read.xlsx("privatization_ua.xlsx", sheetName="privatization", header=TRUE)
+        # Delete Na's
+        good <- complete.cases(PrivatizationUA)
+        PrivatizationUA_clean <- PrivatizationUA[good,]
+        # Change the column class and give to Na's the value of 1993 year, which was previously 1992-1993
+        PrivatizationUA_clean$Year <- suppressWarnings(as.numeric(as.character(PrivatizationUA_clean$Year)))
+        PrivatizationUA_clean$Year[c(1,24,46)] <- 1993
+        # Create a temporary dataframes
+        Privatized_byYear <- data.frame()
+        temp2 <- data.frame()
+        temp3 <- data.frame()
+        # Assign to X the value of classes of privatized enterprises
+        x <- c("A", "B,G", "D", "E", "Zh")
+        # for-loop which counts the number of enterprises for the given years
+        for(i in x){
+                for(y in year){
+                        temp <- PrivatizationUA_clean %>% filter(Companies.class == i & Year == y) 
+                        temp2 <- rbind(temp2, temp) 
+                }
+                temp3 <- temp2 %>% 
+                        summarise(Companies.class = i ,Number.of.privatized.companies = sum(Number.of.privatized.companies))
+                Privatized_byYear <- rbind(Privatized_byYear, temp3)
+                temp2 <- NULL
+        }
+                # Output the result value
+                Privatized_byYear
+}
+
+# 4. Private sector share in GDP (in per cent)  
 GDPprivat2 <- GDPprivat 
 GDPprivat <- data.frame(GDPprivat2[2,3],GDPprivat2[5,3])
 for(i in 4:9){
@@ -384,7 +429,7 @@ for(i in 4:9){
 
 colnames(GDPprivat) <- c("Year", "% of GDP by private companies")
 
-# 4. Scraping of data from the Internet, cleaning them, and creating a new dataframe with minimum wage data for the countries of the world (Year 2013. For Fig. 36)
+# 5. Scraping of data from the Internet, cleaning them, and creating a new dataframe with minimum wage data for the countries of the world (Year 2013. For Fig. 36)
 # Указываем страницу с данными
 page <- read_html("http://www.nationmaster.com/country-info/stats/Labor/Salaries-and-benefits/Monthly-minimum-wage")
 # Скачиваем столбик - country
@@ -406,7 +451,7 @@ df$amount <- as.numeric(df$amount)
 MinWage <- df
 colnames(MinWage) <- c("Country", "EUR")
 
-# 5. Scraping of data from the Internet, cleaning them, and creating a new dataframe with avarage wage data for the countries of the world (Year 2013. For Fig. 37)
+# 6. Scraping of data from the Internet, cleaning them, and creating a new dataframe with avarage wage data for the countries of the world (Year 2013. For Fig. 37)
 # Указываем страницу с данными
 page <- read_html("http://www.nationmaster.com/country-info/stats/Cost-of-living/Average-monthly-disposable-salary/After-tax")
 # Скачиваем столбик - country
@@ -427,9 +472,31 @@ AvWage$amount <- gsub(",","",AvWage$amount)
 AvWage$amount <- as.numeric(AvWage$amount)
 colnames(AvWage) <- c("Country", "USD")
 
-# 5. Industrial production for Fig.38
-Industrial_production2 <- select(Industrial_production, c(c......1991....1992....1993....1994....1995....1996....1997..., Belarus, Lithuania, Latvia, Russian.Federation, Ukraine))
-# 6. Data cleaning for the section on monopoly
+# 7. Industrial production (for Fig.38)
+## Выбираем из таблицы необходимые нам страны
+Industrial_production <- select(Industrial_production, c(c......1991....1992....1993....1994....1995....1996....1997..., Lithuania, Latvia, Russian.Federation, Ukraine))
+## Меняем форму таблицу
+Industrial_production <- gather(Industrial_production, Country, `Billions USD`, Lithuania:Ukraine)
+## Переименовуем колонки
+colnames(Industrial_production) <- c("Year", "Country", "Billions USD")
+## Измняем класс Industrial_production$`Billions USD` на numeric
+Industrial_production$`Billions USD` <- as.numeric(Industrial_production$`Billions USD`)
+## Для удобной работы делем все на 1 млрд
+Industrial_production$`Billions USD` <- Industrial_production$`Billions USD`/1000000000
+## Убираем лишние строки
+Industrial_production$Year <- as.numeric(as.character(Industrial_production$Year))
+Industrial_production <- Industrial_production %>% filter(Year > 0)
+
+## Данные по Белоруссии берем из другой базы данных - Quandl
+ind.production_belorussia <- Quandl("WORLDBANK/BLR_IPTOTSAKD", api_key="JssWArVnQEHLZBv_ifzu", type="xts")
+## Создаем из них отдельную таблицу по Белоруссии
+ipb <- data.frame(Year = 1991:2015, Country = rep("Belorussia", 25), `Billions USD` = ind.production_belorussia[1:25,1]/1000000000)
+## Объеденяем все страны в одну таблицу
+names(ipb) <- names(Industrial_production)
+Industrial_production <- rbind(Industrial_production, ipb)
+
+
+# .8 Data cleaning for the section on monopoly
 colnames(Monopoly_ua) <- c("Market.type", "Year", "Market.share(%)")
 
 colnames(Monopoly_by_branches) <- c("Market.type", "Branch", "%")
@@ -482,49 +549,11 @@ ggplot(data = Privatized_companies, aes(x = Companies.class, y = Number.of.priva
                                          fill = Companies.class ))+
         geom_bar(colour="black", stat = "identity")+
         guides(fill=FALSE)+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Class of privatized companies")+
         ylab("Number of privatized companies")+
         ggtitle("Fig.1. Number of enterprises privatized by 2016 by groups")
 
-```
-
-```{r}
-# Organization of data for plotting Fig.2.
-# Create a function "count_priv_companies" that counts the number of privatized enterprises per group for a given period of time
-count_priv_companies <- function(year) {
-        # Download tha Data of privatized companies in the Ukraine
-        url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/265e2aa7/Data/privatization_ua.xlsx"
-        if(!file.exists("privatization_ua.xlsx")){
-                download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
-        }
-        # Read th Data 
-        PrivatizationUA <- read.xlsx("privatization_ua.xlsx", sheetName="privatization", header=TRUE)
-        # Delete Na's
-        good <- complete.cases(PrivatizationUA)
-        PrivatizationUA_clean <- PrivatizationUA[good,]
-        # Change the column class and give to Na's the value of 1993 year, which was previously 1992-1993
-        PrivatizationUA_clean$Year <- suppressWarnings(as.numeric(as.character(PrivatizationUA_clean$Year)))
-        PrivatizationUA_clean$Year[c(1,24,46)] <- 1993
-        # Create a temporary dataframes
-        Privatized_byYear <- data.frame()
-        temp2 <- data.frame()
-        temp3 <- data.frame()
-        # Assign to X the value of classes of privatized enterprises
-        x <- c("A", "B,G", "D", "E", "Zh")
-        # for-loop which counts the number of enterprises for the given years
-        for(i in x){
-                for(y in year){
-                        temp <- PrivatizationUA_clean %>% filter(Companies.class == i & Year == y) 
-                        temp2 <- rbind(temp2, temp) 
-                }
-                temp3 <- temp2 %>% 
-                        summarise(Companies.class = i ,Number.of.privatized.companies = sum(Number.of.privatized.companies))
-                Privatized_byYear <- rbind(Privatized_byYear, temp3)
-                temp2 <- NULL
-        }
-                # Output the result value
-                Privatized_byYear
-}
 ```
 
 
@@ -544,13 +573,18 @@ ggplot(data = all_phases, aes(x = Companies.class, y = Number.of.privatized.comp
                                          fill = Companies.class ))+
         geom_bar(colour="black", stat = "identity")+
         guides(fill=FALSE)+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Class of privatized companies")+
         ylab("Number of privatized companies")+
         ggtitle("Fig.2. Number of privatized enterprises by groups (1992-2015)")+
         facet_grid(.~years, scales = "free")
 
+```
 
-all_phases
+**_Количество приватизированных предприятий по группам (1992-2015 гг)_**
+```{r}
+all_phases2 <- spread(all_phases, years, Number.of.privatized.companies)
+all_phases2
 ```
 
 Поскольку практически все предприятия групп В и Г были приватизированы до 2005 (7 тыс.) то структура приватизированных в этот период предприятий по отраслям промышленности даст нам общее понимание того, какие именно сектора реальной экономики государство передало в частные руки. (Рис.3)
@@ -558,8 +592,6 @@ all_phases
 
 ##### Рис.3. Приватизированные предприятия групп В,Г по отраслям промышленности на 01.01.2005 г.[^footnote3] 
 ```{r}
-Priv_economic_activity
-
 ggplot(data = Priv_economic_activity, aes(x = economic.activity, y = number.of.privatized.companies.on.01.01.2005, 
                                          fill = economic.activity))+
         geom_bar(colour="black", stat = "identity")+
@@ -569,12 +601,15 @@ ggplot(data = Priv_economic_activity, aes(x = economic.activity, y = number.of.p
         ggtitle("Fig.3. Number of privatized companies by industries on.01.01.2005")
 ```
 
+**_Приватизированные предприятия групп В,Г по отраслям промышленности на 01.01.2005 г._**
+```{r}
+Priv_economic_activity
+```
+
 Об ударных темпах приватизации так же говорит и тот факт, что еще в 2001 году количество государственных предприятий составляло 5% от общего числа предприятий Украины, а уже в 2014 – только 2% (около 6 тыс.), Из них более 2 тыс. относились к предприятиям военно-промышленного комплекса и инфраструктурным предприятиям – отраслям промышленности, пока практически избежавшим приватизации.[^footnote4] (рис.4).
 
 ##### Рис. 4. Количество государственных и частных предприятий Украины по годам[^footnote5] 
 ```{r}
-OwnershipData
-
 ggplot(data = OwnershipData, aes(x = year, y = number.of.enterprices, 
                                          fill = enterprise.ownership ))+
         geom_bar(colour="black", stat = "identity")+
@@ -583,6 +618,11 @@ ggplot(data = OwnershipData, aes(x = year, y = number.of.enterprices,
         ggtitle("Fig.4. Number of state and private enterprises in Ukraine by years")
 ```
 
+**_Количество государственных и частных предприятий Украины по годам_**
+```{r}
+OwnershipData2 <- spread(OwnershipData, enterprise.ownership, number.of.enterprices)
+OwnershipData2
+```
 Даже Европейский Союз в лице Европейского Банка Реконструкции и Развития довольно высоко оценил эти успехи Украины на пути передачи государственного имущества в более эффективные частные руки, как обязательного условия успешного экономического развития. В своем ежегодном исследовании, аналитики Банка выставляют индексовый показатель (от «1» до «5»), оценивающий уровень приватизации в стране для крупных и мелких предприятий[^footnote6]:
 
 **Приватизации крупных предприятий:**
@@ -605,18 +645,24 @@ ggplot(data = OwnershipData, aes(x = year, y = number.of.enterprices,
 
 ##### Рис.5. Приватизация в Украине, Беларуси, Латвии и Литве. Комплексная оценка ЕБРР по годам.
 ```{r}
-PrivIndexEBRD
+PrivIndexEBRD$year <- as.factor(PrivIndexEBRD$year)
 
-ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index, 
+ggplot(data = PrivIndexEBRD, aes(x = year, y = privatization.index, 
                                          fill = country ))+
         geom_bar(colour="black", stat = "identity")+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Countries")+
         ylab("EBRD privatization index")+
         ggtitle("Fig.5. EBRD's assessment of the level of privatization by years.")+
-        facet_grid(privatization.class~year)
+        facet_grid(privatization.class~country)
 
 ```
 
+**_Приватизация в Украине, Беларуси, Латвии и Литве. Комплексная оценка ЕБРР по годам_**
+```{r}
+PrivIndexEBRD2 <- spread(PrivIndexEBRD, year, privatization.index)
+PrivIndexEBRD2
+```
 К каким результатам в экономике Украины, в совокупности с другими факторами, привело такое структурное изменение, как смена собственника с государственного на частного? Как отразилось на поступлениях в государственный бюджет? Стало ли подспорьем в борьбе с безработицей и бедностью? Подстегнуло ли к развитию промышленности?
 
 #ПРИВАТИЗАЦИЯ КАК ИСТОЧНИК ПОПОЛНЕНИЯ ГОСУДАРСТВЕННОГО БЮДЖЕТА УКРАИНЫ? <a name="paragraph2"></a>
@@ -626,24 +672,26 @@ ggplot(data = PrivIndexEBRD, aes(x = country, y = privatization.index,
 ##### Рис. 6. Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по накопительному итогу (млн.грн.)
 
 ```{r}
-BudgetPriv_comulative
-
 ggplot(data = BudgetPriv_comulative, aes(x = Year, y = Million.UAH, group = 1))+
-        geom_area(stat = "identity", fill = "darkgray")+
-        geom_line(colour="darkblue", size = 0.5)+
-        geom_point(colour="darkorange", size = 2)+
+        geom_area(stat = "identity", color="darkblue", fill = "lightblue", alpha=0.7)+
+        #geom_line(colour="darkblue", size = 0.5)+
+        geom_point(colour="blue", size = 1)+
         xlab("Year")+
         ylab("Million UAH")+
-        ggtitle("Fig.6 Incomes to Ukraine budget from privatization in 1992-2015 (cumulative total)")
+        ggtitle("Fig.6 Incomes to Ukraine budget from privatization in 1992-2015 
+                (cumulative total)")
 
+```
+
+**_Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по накопительному итогу (млн.грн.)_**
+```{r}
+BudgetPriv_comulative
 ```
 
 Однако, если посмотреть на реальные поступления в бюджет, не приплюсовывая «по-популистски» финансовые результаты всех предыдущих отчетных периодов к текущему, получится совершенно другая картина (рис.7)[^footnote8].
 
 ##### Рис.7. Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по годам (млн.грн).
 ```{r}
-BudgetPriv_perYear
-
 ggplot(data = BudgetPriv_perYear, aes(x = Year, y = Million.UAH))+
         geom_bar(colour="black", stat = "identity")+
         
@@ -651,6 +699,11 @@ ggplot(data = BudgetPriv_perYear, aes(x = Year, y = Million.UAH))+
         ylab("Millions UAH")+
         ggtitle("Fig.7. Number of privatized companies by industries on.01.01.2005")
 
+```
+
+**_Поступления в государственный бюджет Украины от приватизации 1992-2015 гг по годам (млн.грн)_**
+```{r}
+BudgetPriv_perYear
 ```
 
 
@@ -704,10 +757,13 @@ temp <- c(100 - perc_inc[1,1])
 perc_inc <- rbind(perc_inc, temp)
 colnames(perc_inc) <- c("% revenues", "Source of replenishment of the state budget")
 perc_inc$`Source of replenishment of the state budget` <- c("% revenues from privatization", "% revenues from other sources")
+
+perc_inc$`% revenues` <- round(perc_inc$`% revenues`, 2)
+
 #
 ggplot(data = perc_inc, aes(x = `Source of replenishment of the state budget`, y = `% revenues`, fill = `Source of replenishment of the state budget`))+
         geom_bar(colour="black", stat = "identity")+
-        
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Years")+
         ylab("Millions USD")+
         ggtitle("Fig.9. Comparison of receipts from privatization with other articles of income")
@@ -740,10 +796,6 @@ colnames(avercost) <- c("Year", "Nominal thousand USD for 1 company")
 avercost$`Nominal thousand USD for 1 company` <- round(avercost$`Nominal thousand USD for 1 company`, 2)
 ```
 
-**_Таблица--. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)_**
-```{r}
-avercost
-```
 
 ##### Рис.10. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)
 ```{r, fig.height=5, fig.width=10}
@@ -756,24 +808,35 @@ ggplot(data = avercost, aes(x = Year, y = `Nominal thousand USD for 1 company`, 
         ggtitle("Fig.10. The average cost of 1 privatized company by year")
 ```
 
+**_Таблица--. Среднестатистическая стоимость 1го объекта приватизации по годам (ном.тыс.дол.США)_**
+```{r}
+avercost
+```
+
 Кроме того, следует отметить, что приватизация предприятия, как и любая другая смена владельца, зачастую, влечет за собой реструктуризацию, а следовательно, увольнение людей. Поскольку люди, работающие на государственных предприятиях, социально защищены гораздо лучше, чем в частной структуре, все они пользуются системой «социальной защиты», становятся на биржу труда, регистрируются в центрах занятости. Общие затраты государства на 1-го безработного, проходящего через систему социальной защиты, как прямые (выплаты пособий, переобучение, и.т.д.) так и косвенные (зарплаты социальных работников, содержание офисов центров занятости, и т.д.), составляют примерно 5 тыс.евро на человека по оценкам эксперта аналитической платформы VoxUkraine Люка Ванкраена[^footnote10]. Этот же эксперт, в своей статье *Outsourcing Privatization In Ukraine To Attract Capital And Raise Efficiency (Аутсорсинг приватизации в Украине для привлечения капитала и повышения эффективности)* отмечает, что в результате приватизации только за последние 5 лет более  500 тыс.чел. попали в систему социальной зашиты, потеряв работу из-за реструктуризации предприятия, сменившего собственника. 
 Путем несложных расчетов можно убедиться, что, к сожалению, за последние 5 лет на социальные выплаты, переквалификацию, поиск нового места работы, и т.д. для людей, потерявших работу из-за того, что предприятия, где они работали ранее,  были приватизированы, государство потратило примерно 2,5 млрд. евро, а «заработало» на приватизации всего 2,134 млрд. (примерно на 20% меньше).  
 
 
 #ГОСУДАРСТВЕННЫЙ КОНТРОЛЬ ИЛИ ВСПОМИНАЕТ ЛИ ГОСУДАРСТВО О СВОЕЙ БЫВШЕЙ СОБСТВЕННОСТИ? <a name="paragraph3"></a>
+
 Конечно же, формально существует механизм , благодаря которому государство может контролировать некоторое время (обычно от 3х до 5-ти лет) дальнейшую судьбу объектов, проданных в частные руки. Это специальные условия, указанные в договорах купли-продажи объектов приватизации. Такими условиями могут являться: привлечение инвестиций в приватизированное предприятие, неизменность основных видов деятельности, сохранение (а иногда и увеличение) количества рабочих мест, сохранение объемов выпускаемой продукции, и т.д. Такие договора находятся на контроле Фонда госимущества, которым проводятся ежегодные проверки выполнения  указанных условий. 
 Всего по накопительному итогу на 2015 год  Фонд госимущества «отслеживал судьбу» 12359 объектов приватизации (43% общего количества приватизированных объектов): из них 2937 – объекты незавершенного строительства (или почти 75% общего количества приватизированных объектов этой группы),  8341 – объекты малой приватизации (56% объектов группы) а так же 1081 объект групп В и Г – крупных и стратегически важных предприятий.  Относительно именно этих объектов (В и Г), казалось бы, контроль должен быть максимальным, го государство именно в этой группе, по чему то, оставило за собой право интересоваться дальнейшей судьбой всего лишь 15% предприятий этой группы.  (Рис.11 и 12). 
 
 ##### Рис.11. Сравнение количества объектов приватизации подлежащих государственному контролю с общим количеством объектов приватизации группы[^footnote11].
 ```{r}
-PrivStateControl
 PrivStateControl$control.status <- as.factor(PrivStateControl$control.status)
-class(PrivStateControl$control.status)
+
 ggplot(data = PrivStateControl, aes(x = object.class, y = number.of.objects, fill = control.status))+
         geom_bar(stat = "identity")+
+        scale_fill_brewer(palette="Pastel2")+
         xlab("Group of enterprises")+
         ylab("Number of enterprises")+
         ggtitle("Fig.11. Privatized companies under state control and not controled.")
+```
+
+**_Сравнение количества объектов приватизации подлежащих государственному контролю с общим количеством объектов приватизации группы_**
+```{r}
+PrivStateControl
 ```
 
 
@@ -788,14 +851,19 @@ for(i in x){
         underControl <- rbind(underControl, temp)
 }
 
-underControl
-
 ggplot(data = underControl, aes(x = object.class, y = `% under state control`, fill = object.class))+
         geom_bar(stat = "identity")+
+        scale_fill_brewer(palette="Pastel2")+
         xlab("Group of enterprises")+
         ylab("%")+
         ggtitle("Fig.12. Percentage of privatized companies under state control")
 ```
+
+**_Доля предприятий по группам, договор купли-продажи которых содержит дополнительные условия. (%)_**
+```{r}
+underControl
+```
+
 
 Другими словами, в 85% случаях  частный собственник, приобретая крупное или стратегически важное предприятие, не брал на себя никаких обязательств ни по привлечению инвестиций, ни по сохранению вида деятельности, ни по объемам выпускаемой продукции, ни по сохранению рабочих мест. 
 
@@ -806,15 +874,17 @@ ggplot(data = underControl, aes(x = object.class, y = `% under state control`, f
 colnames(Violations_contracts) <- c("Year", "% contracts with violations")
 Violations_contracts$Year <- as.factor(Violations_contracts$Year)
 
-Violations_contracts
-
 ggplot(data = Violations_contracts, aes(x = Year, y = `% contracts with violations`, group = 1))+
-        geom_line(colour="darkblue")+
-        geom_point()+
-       
+        geom_point(colour="darkred", size = 1)+
+        geom_area(stat = "identity", color="red", fill = "red", alpha=0.4)+
         xlab("Year")+
         ylab("%")+
-        ggtitle("Fig.13. % Contracts with violations of the terms of sales of privatization objects") 
+        ggtitle("Fig.13. % Contracts with violations of the terms of sales of privatization objects")
+```
+
+**_Нарушения, выявляемые проверками условий выполнения договоров купли-продажи приватизированных объектов по годам (% к проверяемым договорам)_**
+```{r}
+Violations_contracts
 ```
 
 При этом, каждый слушатель, без сомнения, будучи патриотом и любя свою страну, все же понимает уровень коррупции в ней, и может интуитивно оценить, каким, скорее всего, является реальный уровень нарушений, если данные официальных отчетов держатся на отметке 14-15%. 
@@ -824,7 +894,6 @@ ggplot(data = Violations_contracts, aes(x = Year, y = `% contracts with violatio
 ```{r}
 Penalties_per_violation2 <- filter(Penalties_per_violation, Category == "Penalties per violator")
 Penalties_per_violation2$year <- as.factor(Penalties_per_violation2$year)
-Penalties_per_violation2
 
 ggplot(data = Penalties_per_violation2, aes(x = year, y = Number, size=Number, group = 1))+
         geom_line(colour="darkgray")+
@@ -833,6 +902,11 @@ ggplot(data = Penalties_per_violation2, aes(x = year, y = Number, size=Number, g
         xlab("Year")+
         ylab("nominal US dollars per violator")+
         ggtitle("Fig.14. Penalties accrued for violating the terms of privatization for 1 violator")
+```
+
+**_Штрафы, начисленные за нарушение условий договоров купли-продажи объектов приватизации по годам на 1 нарушителя (ном.дол.США)_**
+```{r}
+Penalties_per_violation2
 ```
 
 Сумма штрафа на одно предприятие составляла в среднем 374 доллара США в год, что навряд ли можно назвать серьезным сдерживающим фактором, мотивирующим руководство предприятия не нарушать обязательства по приватизационному договору.  А вот «крайняя мера» - возврат предприятия в государственную собственность за все 20 лет была применена всего к 336 объектам. Т.е. из-за невыполнения условий приватизационных договоров было возвращено чуть больше 2% всех приватизированных предприятий, держащихся на контроле в Фонде госимущества.
@@ -845,7 +919,6 @@ ggplot(data = Penalties_per_violation2, aes(x = year, y = Number, size=Number, g
 
 ##### Рис.15. Инвестиции в приватизированные предприятия по накопительному итогу (млрд.грн)
 ```{r}
-PrivatizedCompaniesInvestments
 # Пересчитываем таблицу, показывая ежегодный результат по накопительному методу
 PCIcommulative <- data.frame(PrivatizedCompaniesInvestments[1,1], PrivatizedCompaniesInvestments[1,2])
 for (i in 2:14){
@@ -868,6 +941,12 @@ ggplot(data = PCIcommulative, aes(x = Year, y = `Million UAH`, group = 1))+
 
 ```
 
+**_Инвестиции в приватизированные предприятия по накопительному итогу (млрд.грн)_**
+```{r}
+PrivatizedCompaniesInvestments
+```
+
+
 ##### Рис.16. Инвестиции в приватизированные предприятия по годам (млн.ном.дол.США)[^footnote16].
 
 ```{r}
@@ -880,6 +959,11 @@ ggplot(data = PrivatizedCompaniesInvestments, aes(x = Year, y = million.USD, gro
         xlab("Year")+
         ylab("Million USD")+
         ggtitle("Fig.16. Investments in privatized enterprises by year (million USD)")
+```
+
+**_Инвестиции в приватизированные предприятия по годам (млн.ном.дол.США)_**
+```{r}
+PrivatizedCompaniesInvestments[,-2]
 ```
 
 Итого, в приватизированные предприятия Украины частный собственник за 20 лет (с 1995 по 2015 год) вложил 3,6 млрд.дол.США. Если разделить эту сумму на все объекты приватизированной недвижимости, (28 тыс), получится, что каждое предприятие получало чуть более 6 тыс.дол. в год (или 130 тысяч долларов по накопительному итогу за все 20 лет). Даже, предположив, что инвестиции получали только крупные предприятия и объекты «недостроя», что составит 11 тыс.объектов (исключив из общего числа объекты малой приватизации), все равно сумма получится незначительной – 16,7 тыс.дол. ежегодно (или  330 тыс.долларов по накопительному итогу за 20 лет). Очевидно, что подобную сумму вряд ли можно счесть такой, которая в состоянии привести к качественным изменениям, позволяющим предприятиям стать конкурентоспособными на международном рынке, и говорить, например, о модернизации морально-устаревшего станочного парка или замены изношенных основных фондов, к сожалению, не приходится. 
@@ -929,8 +1013,6 @@ for(i in 1:24){
 
 colnames(gdp_data_ua) <- c("GDP Billions USD", "Year", "Country")
 
-gdp_data_ua
-
 ggplot(data = gdp_data_ua, aes(x = Year, y = `GDP Billions USD`, group = 1))+
         geom_line(colour="darkorange", size = 1)+
         geom_point(colour = "black", size = 2)+
@@ -940,6 +1022,11 @@ ggplot(data = gdp_data_ua, aes(x = Year, y = `GDP Billions USD`, group = 1))+
         ylab("Billions USD")+
         ggtitle("Fig.19. GDP of Ukraine 1992-2015. (Nom. US dollars).")
 
+```
+
+**_ВВП Украины 1992-2015 гг. (ном.дол.США)._**
+```{r}
+gdp_data_ua[,-3]
 ```
 
 
@@ -962,17 +1049,20 @@ for(i in temp){
 
 colnames(gdp_selectedY) <- c("GDP Billions USD", "Year", "Country")
 
-gdp_selectedY
-
 ggplot(data = gdp_selectedY, aes(x = Country, y = `GDP Billions USD`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
         xlab("Countries")+
         ylab("Billions USD")+
         ggtitle("Fig.20. GDP  some countries. 1992-2015")+
-        
+        scale_fill_brewer(palette="Pastel2") +
         coord_flip()+
-        
         facet_grid(Year~.)
+```
+
+**_ВВП по некоторым странам. 1992-2015 гг. (доллары США)_**
+```{r}
+gdp_selectedY2 <- spread(gdp_selectedY, Year, `GDP Billions USD`)
+gdp_selectedY2
 ```
 
 ##### Рис.20a. Прирост ВВП 2015 г по сравнению с 1992 г (%) 
@@ -990,16 +1080,19 @@ for(i in countries){
 
 colnames(GDPgrowth) <- c("Country", "% of GDP growth")
 
-GDPgrowth
-
 ggplot(data = GDPgrowth, aes(x = Country, y = `% of GDP growth`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Countries")+
         ylab("% of growth")+
         ggtitle("Fig.20a. GDP growth in 2015 compared with 1990 (%)")
         
 ```
 
+**_Прирост ВВП 2015 г по сравнению с 1992 г (%)_**
+```{r}
+GDPgrowth
+```
 За годы независимости друг от друга, не только абсолютная величина ВВП в этих странах значительно изменилась. Так же некоторые изменения претерпела и структура ВВП. Доля промышленности в ВВП сильно сократилась во всех анализируемых странах. Украина, некогда наиболее промышленая страна СССР претерпела самый большой процесс деиндустриализации. Доля промышленности в ВВП сократилась с 51% в 1992 году, до 26% в 2015 г. Самое меньшее скращение доли промышленности в ВВП претерпела Белорусия, упав всего на 8%, с 47,7% до 39,9%. 
 
 Доля сельского хозяйства значительно уменьшилась во всех странах без исключения, и, соответственно, доля сферы услуг выросла почти в 2 раза  (см.Рис.21-23)
@@ -1017,17 +1110,21 @@ for(i in temp){
 
 colnames(industry_gdp_selectedY) <- c("Industry (% of GDP)", "Year", "Country")
 
-industry_gdp_selectedY
-
 ggplot(data = industry_gdp_selectedY, aes(x = Country, y = `Industry (% of GDP)`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
         xlab("Countries")+
         ylab("%")+
         ggtitle("Fig.21. Industry, value added (% of GDP)")+
+        scale_fill_brewer(palette="Pastel2") +
         coord_flip()+
         facet_grid(Year~.)
 ```
 
+**_Доля промышленности в ВВП страны (%)_**
+```{r}
+industry_gdp_selectedY2 <- spread(industry_gdp_selectedY, Year, `Industry (% of GDP)`)
+industry_gdp_selectedY2
+```
 
 ##### Рис.22. Доля сельского хозяйства в ВВП страны (%)[^footnote21].
 ```{r}
@@ -1042,17 +1139,21 @@ for(i in temp){
 
 colnames(agro_gdp_selectedY) <- c("Agriculture (% of GDP)", "Year", "Country")
 
-agro_gdp_selectedY
-
 ggplot(data = agro_gdp_selectedY, aes(x = Country, y = `Agriculture (% of GDP)`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
         xlab("Countries")+
         ylab("%")+
         ggtitle("Fig.22. Agriculture, value added (% of GDP)")+
+        scale_fill_brewer(palette="Pastel2") +
         coord_flip()+
         facet_grid(Year~.)
 ```
 
+**_Доля сельского хозяйства в ВВП страны (%)_**
+```{r}
+agro_gdp_selectedY2 <- spread(agro_gdp_selectedY, Year, `Agriculture (% of GDP)`)
+agro_gdp_selectedY2
+```
 
 ##### Рис.23. Доля сферы услуг в ВВП страны (%)[^footnote22].
 ```{r}
@@ -1067,15 +1168,20 @@ for(i in temp){
 
 colnames(service_gdp_selectedY) <- c("Services (% of GDP)", "Year", "Country")
 
-service_gdp_selectedY
-
 ggplot(data = service_gdp_selectedY, aes(x = Country, y = `Services (% of GDP)`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
         xlab("Countries")+
         ylab("%")+
         ggtitle("Fig.23. Services, etc., value added (% of GDP)")+
+        scale_fill_brewer(palette="Pastel2") +
         coord_flip()+
         facet_grid(Year~.)
+```
+
+**_Доля сферы услуг в ВВП страны (%)_**
+```{r}
+service_gdp_selectedY2 <- spread(service_gdp_selectedY, Year, `Services (% of GDP)`)
+service_gdp_selectedY2
 ```
 
 Внешний долг как % ВВП страны вырос во всех анализируемых странах. Наибольшей величины он достиг в Латвии (почти 135% от ВВП), на втором месте Украина (81%), не на много отстала от Украины и Литва (72,6%), Беларусь и особенно Россия выглядят на их фоне как страны, не живущие «в долг» - (56 и 31% соответственно). Внешний долг как % ВВВ возрос за последние 10 лет возрос для всех стран, кроме России. Так, для Беларсуи – почти  в 3 раза, для Латвии, Литвы и Украины – в 2 раза, а вот для России этот показатель уменьшился на 10%. (Рис.24)[^footnote23].
@@ -1086,26 +1192,26 @@ external_debt <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "GC.DOD.T
 
 colnames(external_debt) <- c("Government debt (% of GDP)", "Year", "Country")
 
-#Данные внешнего государственного долга по странам и периодам
-#external_debt$Year <- as.factor(external_debt$Year)
-external_debt
-
 ggplot(data = external_debt, aes(x = Year, y = `Government debt (% of GDP)`, fill = Country))+
         geom_bar(colour="black", stat = "identity")+
         xlab("Year")+
         ylab("%")+
         ggtitle("Fig.24. Central government debt, total (% of GDP)")+
+        scale_fill_brewer(palette="Pastel2") +
         facet_grid(Country~., scales = "free")
 ```
 
+**_Данные внешнего государственного долга по странам и периодам_**
+```{r}
+external_debt2 <- spread(external_debt, Country, `Government debt (% of GDP)`)
+external_debt2
+```
 
 При этом, логично ожидать, что одним из эффектов экономических реформ, в частности – приватизации, должно было стать быстрое и эффективное развитие частного сектора. Но, к сожалению, по крайней мере, для Украины это не оправдалось. Так, по данным ЕБРР, доля частного сектора в ВВП Украины в 2010 году по сравнению с 2004 уменьшилась на 5 % и составила 60%, вместо 65% в предыдущем периоде  (рис.25)[^footnote24]. То есть, другими словами, государственные компании, даже потеряв в количестве, приобрели в эффективности работы, а вот предприятия, перешедшие из рук государства к частному собственнику, не то что не добавили частному сектору эффективности, а наоборот – потянули его на дно. Возможно, просто из-за того, что большинство их перестало существовать как промышленные предприятия, были ликвидированы и разпилины на металалом?
 
 ##### Рис.25. Доля частных компаний в ВВП Украины (%)
 ```{r}
-GDPprivat
 GDPprivat$`% of GDP by private companies` <- as.numeric(as.character(GDPprivat$`% of GDP by private companies`))
-class(GDPprivat$`% of GDP by private companies`)
 
 ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, group = 1))+
         geom_line(colour="darkblue", size = 1)+
@@ -1115,6 +1221,12 @@ ggplot(data = GDPprivat, aes(x = Year, y = `% of GDP by private companies`, grou
         ggtitle("Fig.25. Private sector share in GDP (in per cent)")
 
 ```
+
+**_Доля частных компаний в ВВП Украины (%)_**
+```{r}
+GDPprivat
+```
+
 
 При этом, отдельно стоит отметить, что в 2010 году количество государственных предприятий составляло всего 2,3% от общего числа предприятий Украины. То есть, другими словами, 2,3% предприятий (государственные) генерировали 40% ВВП страны, а 97% предприятий (частные) – 60% ВВП Украины . Для наглядности отобразим это на диаграмме (рис 26).
 
@@ -1131,12 +1243,14 @@ d2$enterprise.ownership <- c("state", "private")
 p1 <- ggplot(data = d1, aes(x = enterprise.ownership, y = number.of.enterprices, fill = enterprise.ownership))+
         geom_bar(colour="black", stat = "identity")+
         guides(fill=FALSE)+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Enterprise ownership")+
         ylab("Number of Enterprises")+
         ggtitle("The share of private and public enterprises in the total number of enterprises(2010)")
 
 p2 <- ggplot(data = d2, aes(x = enterprise.ownership, y = `% of GDP by private companies`, fill = enterprise.ownership))+
         geom_bar(colour="black", stat = "identity")+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Enterprise ownership")+
         ylab("%")+
         ggtitle("Share of private and public sector in GDP (2010)")       
@@ -1160,16 +1274,24 @@ grid.arrange(p1, p2, ncol = 2)
 ##### Рис. 27. Сравнение численности населения Украины, занятого в экономической деятельности с численностью населения трудоспособного возраста 1990-2015 гг.
 ```{r}
 Employed_in_economic$year <- as.factor(Employed_in_economic$year)
-Employed_in_economic
+
 ggplot(data = Employed_in_economic, aes(x = year, y = number, fill = category))+
-        geom_bar(colour="black", stat = "identity")+
+        geom_bar(colour="black", stat = "identity", position=position_dodge())+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Year")+
         ylab("Million people")+
         ggtitle("The population engaged in economic activity and the working-age pop. in total") 
 
 ```
 
+**_Сравнение численности населения Украины, занятого в экономической деятельности с численностью населения трудоспособного возраста 1990-2015 гг._**
 ```{r}
+Employed_in_economic
+```
+
+
+```{r}
+# Подготовка данных для Рис. 28
 tmp_category <- c("Industry", "Agriculture", "Services")
 labour_lost_perc <- data.frame()
 labour_lost <- data.frame()
@@ -1186,13 +1308,6 @@ temp <- Labour %>% filter(Catergory== i) %>% summarise(Catergory= i, `Millions p
 labour_lost <- rbind(labour_lost, temp)
 }
 
-# Количество людей задействованных в той или иной экономической активности в 1990 и в 2015 
-Labour
-# Процент потерь рабочих мест с 1990 до 2015 года в Промышленности, Сельском хозяйстве и Сервисе 
-labour_lost_perc
-# Количество потерь рабочих мест в тех-же отраслях украинской экономике с 1990 по 2015 года
-labour_lost
-
 ```
 
 
@@ -1206,6 +1321,23 @@ ggplot(data = Labour, aes(x = Year, y = Million.People))+
         ggtitle("Fig.28. Employment of the population of Ukraine by economic sectors 1990-2015")
 ```
 
+**_Количество людей задействованных в экономической активности в 1990 и в 2015_**
+```{r}
+Labour2 <- spread(Labour, Catergory, Million.People)
+Labour2
+```
+
+**_Процент потерь рабочих мест с 1990 до 2015 года в gромышленности, cельском хозяйстве и cфере услуг _**
+```{r}
+labour_lost_perc
+```
+
+**_Количество потерь рабочих мест в тех-же отраслях украинской экономике с 1990 по 2015 года_**
+```{r}
+labour_lost
+```
+
+
 При этом доля государственного и коммунального секторов по количеству занятых в них довольно велика –  44% всех работающих (20,7% приходятся на государственный сектор, 23,2% - на коммунальный). Остальные 56% трудятся в частном секторе, а так же в структурах с корпоративным управлением (акционерных обществах), которые могут включать в себя как государственных так и частных собственников. (более детально см.рис.29)[^footnote29].
 
 ```{r}
@@ -1218,10 +1350,6 @@ for (i in 2:12){
 colnames(Labour_force_total) <- c("Organizational forms of employment in Ukraine", "% Of employees")
 ```
 
-```{r}
-# Структура занятости населения Украины в разрезе организационных форм в 2015 г (%)
-Labour_force_total
-```
 
 ##### Рис.29. Структура занятости населения Украины в разрезе организационных форм в 2015 г (%).
 ```{r}
@@ -1237,6 +1365,12 @@ organizational forms in 2015")
 
 ```
 
+**_Структура занятости населения Украины в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Labour_force_total
+```
+
+
 В промышленности Украины на государственный и коммунальный сектора приходилось почти 12% работающих в Украине (5,4% и 6,4% соответственно), а 88%  - на частный сектор и структуры с корпоративным управлением (акционерные общества), которые могут включать в себя как государственных так и частных собственников. (более детально см.Рис.30. )
 
 ```{r}
@@ -1250,10 +1384,6 @@ colnames(Labour_force_industry) <- c("Organizational forms of employment in the 
 Labour_force_industry <- Labour_force_industry[-c(7:10),]
 ```
 
-```{r}
-# Структура занятости населения в украинской промышленности в разрезе организационных форм в 2015 г (%)
-Labour_force_industry
-```
 
 ##### Рис.30. Структура занятости в промышленности Украины в разрезе организационных форм в 2015г (%). 
 ```{r}
@@ -1264,6 +1394,11 @@ ggplot(data = Labour_force_industry, aes(x = `Organizational forms of employment
         ylab("% Of employees")+
         ggtitle("Fig.30. Structure of employment in the Ukrainian industry in the 
 context of organizational forms in 2015") 
+```
+
+**_Структура занятости населения в украинской промышленности в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Labour_force_industry
 ```
 
 В сельском хозяйстве на долю государственного и коммунального секторов приходилось почти 15% занятых (13,7% и 1,1% соответственно) и чуть более 85% на частный сектор, а так же структуры с корпоративным управлением (более детально см.рис.31)
@@ -1279,10 +1414,6 @@ colnames(Labour_force_agriculture) <- c("Organizational forms of employment in t
 Labour_force_agriculture <- filter(Labour_force_agriculture, `% Of employees` > 0)
 ```
 
-```{r}
-# Структура занятости населения в украинской агропромышленности в разрезе организационных форм в 2015 г (%)
-Labour_force_agriculture
-```
 
 ##### Рис.31. Структура занятости в сельском хозяйстве Украины в разрезе организационных форм в 2015 (%). 
 ```{r}
@@ -1295,6 +1426,11 @@ ggplot(data = Labour_force_agriculture, aes(x = `Organizational forms of employm
 context of organizational forms in 2015") 
 ```
 
+**_Структура занятости населения в украинской агропромышленности в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Labour_force_agriculture
+```
+
 Если сравнить Украину с другими выбранными странами бывшего СССР, то тенденции в изменении отраслевой структуры занятости сходны. Наблюдается уменьшение доли сельского хозяйства (на 3-5%), уменьшение доли промышленности (на 1-3%), и соответственно, увеличение доли сферы услуг. (Рис.32-34)
 
 ##### Рис.32. Доля промышленности в общем количестве рабочих мест страны (%)[^footnote30].
@@ -1303,17 +1439,21 @@ industry_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "S
 
 colnames(industry_share_labor) <- c("Employment in industry (% of total employment)", "Year", "Country")
 
-# Данные по проценту занятых в промышленности в некоторых странах бывшего СССР с 1990 г. по 2014 г.
-industry_share_labor
-
 ggplot(data = industry_share_labor, aes(x = Year, y = `Employment in industry (% of total employment)`, group=1))+
         geom_line(aes(colour = Country), size=1)+
         geom_point(colour = "darkblue", size=1)+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Year")+
         ylab("% of total employment")+
         ggtitle("Fig.32. Employment in industry (% of total employment)")+
         facet_grid(Country~., scales = "free")
 
+```
+
+**_Данные по проценту занятых в промышленности в некоторых странах бывшего СССР с 1990 г. по 2014 г._**
+```{r}
+industry_share_labor2 <- spread(industry_share_labor, Country, `Employment in industry (% of total employment)`)
+industry_share_labor2
 ```
 
 ##### Рис.33. Доля сельского хозяйства в общем количестве рабочих мест страны (%)[^footnote31].
@@ -1322,12 +1462,10 @@ agriculture_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator =
 
 colnames(agriculture_share_labor) <- c("Employment in agriculture (%)", "Year", "Country")
 
-# Данные по проценту занятых в сельском хозяйстве в некоторых странах бывшего СССР с 1990 г. по 2014 г.
-agriculture_share_labor
-
 ggplot(data = agriculture_share_labor, aes(x = Year, y = `Employment in agriculture (%)`, group=1))+
         geom_line(aes(colour = Country), size=1)+
         geom_point(colour = "darkblue", size=1)+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Year")+
         ylab("% of total employment")+
         ggtitle("Fig.33. Employment in agriculture (% of total employment)")+
@@ -1335,14 +1473,17 @@ ggplot(data = agriculture_share_labor, aes(x = Year, y = `Employment in agricult
 
 ```
 
+**_Данные по проценту занятых в сельском хозяйстве в некоторых странах бывшего СССР с 1990 г. по 2014 г._**
+```{r}
+agriculture_share_labor2 <- spread(agriculture_share_labor, Country, `Employment in agriculture (%)`)
+agriculture_share_labor2
+```
+
 ##### Рис.34. Доля сферы услуг в общем количестве рабочих мест страны (%)[^footnote32].
 ```{r, fig.height=5, fig.width=10}
 services_share_labor <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.SRV.EMPL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
 
 colnames(services_share_labor) <- c("Employment in services (% of total employment)", "Year", "Country")
-
-# Данные по проценту занятых в сфере услуг в некоторых странах бывшего СССР с 1990 г. по 2014 г.
-services_share_labor
 
 ggplot(data = services_share_labor, aes(x = Year, y = `Employment in services (% of total employment)`, group=1))+
         geom_line(aes(colour = Country), size=1)+
@@ -1354,6 +1495,12 @@ ggplot(data = services_share_labor, aes(x = Year, y = `Employment in services (%
 
 ```
 
+**_Данные по проценту занятых в сфере услуг в некоторых странах бывшего СССР с 1990 г. по 2014 г._**
+```{r}
+services_share_labor2 <- spread(services_share_labor, Country, `Employment in services (% of total employment)`)
+services_share_labor2
+```
+
 Наиболее высок официальный уровень безработицы прибалтийских странах (почти 12%), в Украине он составил в 2013 году 7,5%, сократившись за 10 лет на 1,5%. Самый низкий уровень безработицы в Беларуси, который составляет всего 0,6% (см.рис.35)[^footnote33].
 
 ##### Рис.35. Уровень безработицы (%).
@@ -1361,9 +1508,6 @@ ggplot(data = services_share_labor, aes(x = Year, y = `Employment in services (%
 unemployment <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "SL.UEM.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
 
 colnames(unemployment) <- c("Unemployment (% of total labor force)", "Year", "Country")
-
-# Данные по безработице в некоторых странах бывшего СССР с 1990 г. по 2014 г.
-unemployment
 
 ggplot(data = unemployment, aes(x = Year, y = `Unemployment (% of total labor force)`, group=1))+
         geom_line(aes(colour = Country), size=1)+
@@ -1375,11 +1519,16 @@ ggplot(data = unemployment, aes(x = Year, y = `Unemployment (% of total labor fo
 
 ```
 
+**_Данные по безработице в некоторых странах бывшего СССР с 1990 г. по 2014 г._**
+```{r}
+unemployment2 <- spread(unemployment, Country, `Unemployment (% of total labor force)`)
+unemployment2
+```
+
 Из исследуемых стран самый низкий уровень оплаты труда, к сожалению, так же в Украине. И минимальные и средние зарплаты в 2013 году были в нашей стране существенно ниже. Следует отметить, что по уровню средней заработной платы Россия практически сравнялась с прибалтийскими странами, а Беларусь отстает от них всего на 10-15%, в то время как заработная плата в Украине в 2 раза ниже, чем в Латвии и Литве. (Рис.36-37)
 
 ##### Рис.36. Минимальная заработная плата в месяц в 2013 г (доллары США)[^footnote34].
 ```{r}
-MinWage
 # Выбираем из таблицы необходимые для анализа страны. 
 minwagen <- grep("Latvia|Lithuania|Russia|Belarus|Ukraine", MinWage$Country)
 
@@ -1389,19 +1538,21 @@ for(i in minwagen){
         MinWage_selected <- rbind(MinWage_selected, MinWage[i,])
 }
 
-ggplot(data = MinWage_selected, aes(x = Country, y = EUR))+
-        geom_bar(colour="blue", fill = "darkorange", stat = "identity")+
-        
+ggplot(data = MinWage_selected, aes(x = Country, y = EUR, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        scale_fill_brewer(palette="Pastel2") +
         xlab("Country")+
         ylab("EUR")+
         ggtitle("Fig.36. The minimum wage per month in 2013 (US dollars)") 
 ```
 
+**_Минимальная заработная плата в месяц по выбранным странам в 2013 г (доллары США)_**
+```{r}
+MinWage_selected
+```
 
 ##### Рис. 37. Средняя заработная плата в месяц 2014 (доллары США)[^footnote35].
 ```{r}
-AvWage
-
 # Выбираем из таблицы необходимые для анализа страны. 
 avwagen <- grep("Latvia|Lithuania|Russia|Belarus|Ukraine", AvWage$Country)
 
@@ -1411,13 +1562,19 @@ for(i in avwagen){
         AvWage_selected <- rbind(AvWage_selected, AvWage[i,])
 }
 
-ggplot(data = MinWage_selected, aes(x = Country, y = EUR))+
-        geom_bar(colour="darkorange", fill = "darkblue", stat = "identity")+
+ggplot(data = MinWage_selected, aes(x = Country, y = EUR, fill = EUR))+
+        geom_bar(colour="black", stat = "identity")+
         
         xlab("Country")+
         ylab("USD")+
         ggtitle("Fig.37. Average monthly wage in 2014 (US dollars)") 
 ```
+
+**_Средняя заработная плата в месяц по выбранным странам в 2014 г (доллары США)_**
+```{r}
+MinWage_selected
+```
+
 
 В зависимости от формы собственности, официальная заработная плата в Украине так же  существенно отличалась. Традиционно, государственный сектор в официальных выплатах заработной платы, значительно опережал (почти в два раза) и частные, и коммунальные предприятия. (см.Рис.37а)[^footnote36]. Для промышленности и сельского хозяйства характерны те же тенденции, что и в целом по всем видам экономической деятельности. Отдельно необходимо подчеркнуть, что официальная статистика говорит только об официальных выплатах, никак не учитывая практику «зарплат в конвертах», особо характерных для частного сектора. 
 
@@ -1431,13 +1588,6 @@ for (i in 3:13){
 
 colnames(Salaries_total) <- c("Organizational forms of employment in Ukraine", "Average wage level in UAH")
 ```
-
-
-```{r}
-# Средний уровень заработных плат Украины в разрезе организационных форм в 2015 г (%)
-Salaries_total
-```
-
 
 ##### Рис.37а. Официальные заработные платы в Украине в зависимости от организационной формы объекта в 2015 г (грн.)
 ```{r}
@@ -1453,6 +1603,10 @@ ggplot(data = Salaries_total, aes(x = `Organizational forms of employment in Ukr
         coord_flip()
 ```
 
+**_Средний уровень заработных плат Украины в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Salaries_total
+```
 
 ```{r, warning=FALSE}
 # Подготовка данных для Рис.37б.
@@ -1464,12 +1618,6 @@ for (i in 3:13){
 colnames(Salaries_industry) <- c("Organizational forms of employment", "Salaries in industry (UAH)")
 
 Salaries_industry <- filter(Salaries_industry, `Salaries in industry (UAH)` > 0)
-```
-
-
-```{r}
-# Средний уровень заработных плат в промышленном секторе экономики Украины в разрезе организационных форм в 2015 г (%)
-Salaries_industry
 ```
 
 
@@ -1486,6 +1634,10 @@ ggplot(data = Salaries_industry, aes(x = `Organizational forms of employment`, y
         coord_flip()
 ```
 
+**_Средний уровень заработных плат в промышленном секторе экономики Украины в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Salaries_industry
+```
 
 ```{r, warning=FALSE}
 # Подготовка данных для Рис.37в.
@@ -1502,13 +1654,6 @@ colnames(Salaries_agriculture) <- c("Organizational forms of employment", "Salar
 Salaries_agriculture <- filter(Salaries_agriculture, `Salaries in Agriculture (UAH)` > 0)
 ```
 
-
-```{r}
-# Средний уровень заработных плат в аграрном секторе экономики Украины в разрезе организационных форм в 2015 г (%)
-Salaries_agriculture
-```
-
-
 ##### Рис.37в. Официальные заработные платы в Украине в промышленности в зависимости от организационной формы объекта в 2015 г (грн.)
 ```{r}
 
@@ -1522,239 +1667,458 @@ ggplot(data = Salaries_agriculture, aes(x = `Organizational forms of employment`
         coord_flip()
 ```
 
+**_Средний уровень заработных плат в аграрном секторе экономики Украины в разрезе организационных форм в 2015 г (%)_**
+```{r}
+Salaries_agriculture
+```
+
 
 #ИНДУСТРИАЛЬНОЕ ПРОИЗВОДСТВО <a name="paragraph6"></a>
 
-*Данные для построения графа 38 взяты из глобальной международной базы данных WorldBank. На момент последней редакции данной работы, эти и другие данные были доступны по ссылке http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS.* 
-*Данные графиков 39-47 взяты, в первую очередь, из раздела «Промышленность» Статистического ежегодника Украины за 2013 г. (на момент последней редакции работы его можно было загрузить по ссылке library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf. Кроме того, для удобства читателей, данный документ доступен для скачивания и на нашем сайте ___). Именно этот ежегодник крайне интересен с точки зрения анализа динамики промышленного производства, поскольку по некоторым показателям приводит данные за 2000 год, а иногда и 1990-1991 года. Даже архивы сайта Государственного комитета статистики по объемам производства приводят данные, в лучшем случае, начиная с 2003 года. (http://www.ukrstat.gov.ua/ Статистична інформація / Економічна статистика / Економічна діяльність /Промисловість / Виробництво основних видів промислової продукції). Для удобства работы данные за все года, взятые из этих источников, собраны в авторских таблицах показателей производства основных видов продукции добывающей* *(https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/Extractive%20industry.xlsx ) и перерабатывающей (https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/Processing%20industry_fin.xlsx ) промышленности Украины*
-*Данные графиков 48-49 так же можно найти на сайте Госкомстата (http://www.ukrstat.gov.ua Економічна статистика /Зовнішньоекономічна діяльність/Експорт-імпорт окремих видів товарів за країнами світу). Данные таблицы в формате excel, подготовленные госкомстатом, для удобства читателя, так же можно загрузить и на нашем сайте.*
+*Данные для построения графа 38 взяты для Беларуси из глобальной международной базы данных Quandl https://www.quandl.com/data/WORLDBANK/BLR_IPTOTSAKD-Belarus-Industrial-Production-constant-US-seas-adj, для других стран – в глобальной базе данных WorldBank. На момент последней редакции данной работы, эти и другие данные были доступны по ссылке http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS. Использование базы данных Quandl объясняется отсутствием в статистике  WorldBank данных по Беларуси за года, ранее 1997.* 
+*Данные графиков 39-47 за 1990-2000 года, взяты, в первую очередь, из раздела «Промышленность» Статистического ежегодника Украины за 2013 г. (на момент последней редакции работы его можно было загрузить по ссылке library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf. Кроме того, для удобства читателей, данный документ доступен для скачивания и на нашем сайте ___). Этот ежегодник крайне интересен именно тем, что приводит многие показатели начиная с первых дней независимости Украины, которые не содержатся в архивах сайта Государственного комитета статистики (http://www.ukrstat.gov.ua/ Статистична інформація / Економічна статистика / Економічна діяльність / Промисловість / Виробництво основних видів промислової продукції).* *Однако, за более поздние периоды (начиная с 2003 года), по ряду показателей, авторами было обнаружено несоответствие данных Ежегодника и официального сайта Госкомстата. Так, выбрав для детального анализа 40 показателей, авторами было обнаружено противоречие данных по 6 показателям (серная кислота, гидроксид натрия, автобусы, автомобили, мука, хлеб и хлебобулочные изделия). Так, например, для объемов производства серной кислоты сайт Госкомстата приводит за 2012 год – 948 тыс.тон, за  2013 год – 906  тыс.тон , Ежегодник… приводит 1371 и 1170 тыс.тон соответственно. Там, где данные двух источников противоречили друг другу, авторами использовались данные официального сайта Госкомстата, в расчете на то, что они обновляются чаще, в то время как официальное печатаное издание, возможно, нуждается в редактировании. Кроме того, по некоторым показателям невозможно провести ретроспективный анализ, поскольку единицы измерения для них были измены (например, галька, гравий, и т.д., измерялись до 2010 года в м.куб., а с 2011 года уже в тоннах).* 
+*Для удобства читателей данные за все года, которые можно сопоставить, взятые из этих источников, собраны в авторских таблицах показателей производства основных видов продукции добывающей (https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/Extractive%20industry.xlsx ) и перерабатывающей (https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/Processing%20industry_fin.xlsx ) промышленности Украины. Для построения графиков отчета по каждому показателю авторами использовались наиболее ранний и поздний доступные года, когда наблюдался общий подъем производства, и 2013 год – как последний год, в который статистика учитывала производство на территории АРК и зоны АТО.*
+*Данные графиков 48-49 так же можно найти на сайте Госкомстата (http://www.ukrstat.gov.ua Економічна статистика /Зовнішньоекономічна діяльність/Експорт-імпорт окремих видів товарів за країнами світу). Авторские таблицы в формате excel, подготовленные по этим данным, так же можно загрузить и на нашем сайте ______________.* 
 
-За годы независимости блестящий рост индустриального производства показала Беларусь, увеличив его только за 10 последних лет почти в 8 (!!!) раз. Положительная динамика так же характерна и для РФ (+25%), Латвии и Литвы (17% и 20%) соответственно (Рис 38). Украина за 10 лет осталась практически на том же месте, показав прирост меньше 1%. Этого, к сожалению, недостаточно даже для компенсации уровня инфляции, составлявшего, в частности для доллара США, в котором измеряется данный показатель, в среднем 2% ежегодно[^footnote37].
-
-
-##### Рис.38. Индустриальное производство (млн.дол.США)[^footnote38].
-```{r}
-#Industrial_production
-# НЕ ГОТОВО----------------------
-industrial_production <- Quandl("WGEM/UKR_IPTOTNSKD")
+За годы независимости блестящий рост индустриального производства показала Беларусь, увеличив его только за 10 последних лет почти в 8 (!!!) раз. Положительная динамика так же характерна и для РФ (+25%), Латвии и Литвы (17% и 20%) соответственно (Рис 38). Украина за 10 лет осталась практически на том же месте, показав прирост меньше 1%. Этого, к сожалению, недостаточно даже для компенсации уровня инфляции, составлявшего, в частности для доллара США, в котором измеряется данный показатель, в среднем 2% ежегодно.[^footnote37].
 
 
-#industrial_production <- wb(country = c("UA","BY","LT","LV","RU"), indicator = "NE.GDI.TOTL.ZS", startdate = 1990, enddate = 2015, removeNA = TRUE) #%>% select(value, date, country)
+##### Рис.38. Индустриальное производство (млрд.дол.США) [^footnote38].
+```{r, warning=FALSE}
+ggplot(data = Industrial_production, aes(x = Year, y = `Billions USD`, fill = Country))+
+        geom_bar(colour="black", stat = "identity")+
+        scale_fill_brewer(palette="Pastel2")+
+        xlab("Year")+
+        ylab("Billions USD")+
+        ggtitle("Fig.38. Industrial production (billion US dollars)")+
+        facet_grid(Country~., scales = "free")
 
-#for(i in 1:24){
-#       gdp_data_ua$value[i] <- gdp_data_ua$value[i]/1000000000 
-#}
 
-#colnames(gdp_data_ua) <- c("GDP Billions USD", "Year", "Country")
-
-#gdp_data_ua
-
-#ggplot(data = gdp_data_ua, aes(x = Year, y = `GDP Billions USD`, group = 1))+
-#        geom_line(colour="darkorange", size = 1)+
-#        geom_point(colour = "black", size = 2)+
-#        geom_smooth(method = "loess")+
-#       
-#        xlab("Year")+
-#        ylab("Billions USD")+
-#        ggtitle("Fig.19. GDP of Ukraine 1992-2015. (Nom. US dollars). + Gross capital formation (% of GDP)")
 ```
 
-Если же говорить о конкретных объемах производства товаров, то он снизился практически для всех отраслей промышленности. При чем, в основном это коснулось машиностроения а так же добывающей и перерабатывающей промышленности, т.е.тех групп, которые затронула приватизация. 
+**_Индустриальное производство (млрд.дол.США)_**
+```{r}
+Industrial_production2 <- spread(Industrial_production, Country, `Billions USD`)
+Industrial_production2
+```
 
-Так, например, в нефтеперерабатывающей промышленности за период с 1990 по 2013 гг: первичная переработка нефти сократилась в 17 раз, изготовление кокса снизилось в 2 раза, изготовление битума в 25 раз.
+Если же говорить о конкретных объемах производства товаров, то они снизились практически для всех отраслей промышленности. 
 
-В химической промышленности за тот же период, например, производство серной кислоты снизилось в 4 раза, гидроксида натрия – в 7 раз, шин резиновых – в 37 раз. 
+Так, например, в нефтеперерабатывающей промышленности за период с 1990 по 2015 гг. изготовление кокса снизилось в 3 раза. При этом в 2003 году наблюдался небольшой рост производства кокса, общий объем в тот период составил почти 2/3 объема 1990 года. За 2013-2015 гг. производство кокса сократилось еще в 1,5 раза. (см.рис.39).[^footnote39].  
 
-В производстве металлургической продукции, например, производство чугуна снизилось в 1,5 раза, производство стали – в 3 раза, производство труб в 3,6 раза. 
-
-В машиностроении, например, производство тракторов сократилось в 25 раз, производство легковых автомобилей – в 3 раза, производство автобусов –  более чем в 5 раз, телеприемников – в 10 раз, ламп электрических – в 2,5 раз, велосипедов – в 18,7 раза (Рис.39-42)[^footnote39].  
-
-##### Рис.39. Изготовление кокса и отдельных видов продуктов нефтепереработки (тыс.тон)
+##### Рис.39. Производство кокса по годам (млн.т.)
 ```{r}
 ProcessingIndustry.Nan <- ProcessingIndustry %>% filter(Value > 0)
 
-product_names39 <- c("Coke-oven coke of coking coal", "Primary oil processing", "Oil asphalt and shore bitumen")
+coke <- ProcessingIndustry.Nan  %>% filter(ProductName == "Coke-oven coke of coking coal")
 
-
-fig39 <- data.frame() 
-
-for (i in product_names39){
-       temp <- ProcessingIndustry.Nan   %>% filter(ProductName == i) 
-       fig39 <- rbind(fig39, temp)
-}
-
-fig39$Year <- as.numeric(fig39$Year)
-
-ggplot(data = fig39, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
-        xlab("Year")+
-        ylab("Thousand tones")+
-        ggtitle("fig39. Manufacture of coke and certain types of products of oil refining")+
-        facet_grid(ProductName~., scales = "free")
-
-```
-
-##### Рис.40. Производство некоторых видов веществ химических основных неорганических (тыс.тон)
-
-```{r}
-product_names40 <- c("Sulphuric acid,", "Sodium hydroxide (caustic soda)", "Rubber tires")
-
-fig40 <- data.frame() 
-
-for (i in product_names40){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig40 <- rbind(fig40, temp)
-}
-
-fig40$Year <- as.numeric(fig40$Year)
-
-ggplot(data = fig40, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
-        xlab("Year")+
-        ylab("Thousand tones")+
-        ggtitle("Fig.40. Production of some types of substances in basic inorganic chemicals")+
-        facet_grid(ProductName~., scales = "free")
-```
-
-##### Рис.41. Производство отдельных видов продукции металлургического производства (млн.т.)
-```{r}
-product_names41 <- c("Cast iron", "Steel without semi-finished products produced through continuous casting", "Pipes of  large and small diameters, hollow sections made of  ferrous  metals")
-
-fig41 <- data.frame() 
-
-for (i in product_names41){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig41 <- rbind(fig41, temp)
-}
-
-fig41$Year <- as.numeric(fig41$Year)
-
-ggplot(data = fig41, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
+ggplot(data = coke, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
         xlab("Year")+
         ylab("Million tones")+
-        guides(fill=FALSE)+
-        
-        ggtitle("Fig.41. Production of selected types of products of metallurgical production 
-                (million tons)")+
-        
-        facet_grid(ProductName~., scales = "free")
+        ggtitle("Fig39. Coke production by years (million tons)")
+
 ```
 
-##### Рис.42. Производство отдельных видов продукции машиностроения 
-```{r, fig.height=5, fig.width=10}
-product_names42 <- c("Tractors for agriculture and forestry", "Motor cars", "Buses")
+Первичная переработка нефти с 1990 по 2013 гг. сократилась в 17 раз. В 2010 году наблюдалось увеличение количества первичной переработки нефти, когда объем производства составил чуть меньше 20% от объема 1990 года (рис. 39а).
 
-fig42 <- data.frame() 
+##### Рис.39а. Первичная переработка нефти по годам (млн.т.)
+```{r}
+oil.processing <- ProcessingIndustry.Nan  %>% filter(ProductName == "Primary oil processing")
 
-for (i in product_names42){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig42 <- rbind(fig42, temp)
-}
-
-
-fig42$Year <- as.numeric(fig42$Year)
-
-ggplot(data = fig42, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
+ggplot(data = oil.processing, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
         xlab("Year")+
-        ylab("Thousand units")+
-        geom_smooth(method = "loess")+
-        ggtitle("Fig.42. Production of selected types of machine-building products 
-                (thousand units)")+
-        
-        facet_grid(ProductName~., scales = "free")
+        ylab("Million tones")+
+        ggtitle("Fig.39a. Primary oil processing by years (million tons)")
+
 ```
 
-Интересующийся слушатель может ознакомиться с более подробной подборкой статистических показателей развития (а точнее упадка) промышленности Украины за этот период, которая, например, приведена в «Статистическом ежегоднике Украины за 2013». К большому сожалению автора, слушатель только убедиться в том, что и в других отраслях промышленности ситуация аналогичная. 
+Изготовление битума за 25 лет независимости Украины сократилось в 103 (сто три!) раза. При этом в 2007 году наблюдался небольшой рост количества производства битума, когда было произведено 23% от объема выпуска 1990 года. За 2014-2015 гг производство битума упало еще в 5 раз. (рис.39б)
 
-Даже такая отрасль, как производство продуктов питания, спрос на продукцию которой, казалось бы, есть всегда, по многим видам товаров сократила производство в разы. Например, объемы производства сыров упали на 13%, Муки – в 3 раза, сахара – более чем в 5 раз, хлеба и хлебобулочных изделий – почти в 1,5 раза, колбасных изделий – в 3 раза, масла сливочного – более чем в 5 раз. 
+##### Рис.39б. Битум нефтяной (тыс.т.)
+```{r}
+bitumen <- ProcessingIndustry.Nan  %>% filter(ProductName == "Oil asphalt and shore bitumen")
 
-##### Рис.43. Производство отдельных товаров пищевой промышленности (тыс.ед.)
-```{r, fig.height=5, fig.width=10}
-product_names43 <- c("Cheese with high fat content", "Flour", "White crystalline sugar", "Bread and flour products", "Sausages", "Butter")
-
-fig43 <- data.frame() 
-
-for (i in product_names43){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig43 <- rbind(fig43, temp)
-}
-
-
-fig43$Year <- as.numeric(fig43$Year)
-
-ggplot(data = fig43, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
+ggplot(data = bitumen, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
         xlab("Year")+
-        ylab("Thousand units")+
-        ggtitle("Fig.43. Manufacture of individual food products")+
-        geom_smooth(method = "loess")+
-        facet_grid(ProductName~., scales = "free")
+        ylab("Thousand tones")+
+        ggtitle("Fig.39b. Bitumen of oil")
 
 ```
 
-Кроме того, катастрофическое падение производства, например, в станкостроении, говорит и о том, что отрасли, «инструментарий» для обеспечения работы которых производило станкостроение, так же находятся в бедственном положении.  Так, например, только по сравнению с 2003 годом (уже далеко не лучшим годом украинской промышленности) в 2015 году производство прессов и ковальных машин упало в 37 раз, станков для обработки дерева, токарных и фрезеровальных станков – в 3 раза. (Рис.44)
+В химической промышленности с 1990 года по 2015 год, например, производство серной кислоты снизилось почти в 10 раз. При этом в 2007 году наблюдался максимальный рост производства, который достиг 33% от объемов 1990 года. При этом только за 2014-2015гг. производство серной кислоты снизилось в 1,7 раза.  
+
+##### Рис. 40. Производство серной кислоты по годам (тыс.тон)
+```{r}
+sulphuric.acid <- ProcessingIndustry.Nan  %>% filter(ProductName == "Sulphuric acid,")
+
+ggplot(data = sulphuric.acid, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tones")+
+        ggtitle("Fig. 40. Production of sulfuric acid by years")
+
+```
+
+Производство гидроксида натрия за 1990-2013 гг упало в 7 раз, при этом в 2004 году наблюдался рост производства, который почти достиг 50% от объемов 1990 года. К сожалению, за 2014-2015 гг.данные по этому показателю недоступны. Госкомстат ссылается на их исключение из статистики с целью исполнения требований Закона Украины «О государственной статистике»[^footnote40], в части сохранения конфиденциальности данных.  
 
 
-##### Рис.44. Производство некоторых товаров станкостроения[^footnote40]. 
+##### Рис. 40а. Производство гидроксида натрия по годам (тыс.тон)
+```{r}
+sodium.hydroxide <- ProcessingIndustry.Nan  %>% filter(ProductName == "Sodium hydroxide (caustic soda)")
 
-```{r, fig.height=5, fig.width=10}
-product_names44 <- c("Presses and forge machines", "Lathes for wood processing", "Lathes, grinders, drillers, milling machines")
+ggplot(data = sodium.hydroxide, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tones")+
+        ggtitle("Fig. 40a. Production of sodium hydroxide by years")
 
-fig44 <- data.frame() 
+```
 
-for (i in product_names44){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig44 <- rbind(fig44, temp)
-}
+Производство шин резиновых для автобусов, грузовых авто, самолетов, сократилось  в 44 раза. Данные за 2000 г. недоступны, опять же, со ссылкой на требования Закона Украины «О государственной статистике», в части сохранения конфиденциальности данных. За период 2014-2015 гг. падение производства по данному виду продукции составило чуть меньше 20%.
 
+##### Рис. 40б. Производство шин резиновых по годам (тыс.шт.)
+```{r}
+rubber.tires <- ProcessingIndustry.Nan  %>% filter(ProductName == "Rubber tires")
 
-fig44$Year <- as.numeric(fig44$Year)
+ggplot(data = rubber.tires, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tones")+
+        ggtitle("Fig. 40b. Manufacture of tires rubber by years ")
 
-ggplot(data = fig44, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
+```
+
+В производстве металлургической продукции, например, производство чугуна снизилось в 2 раза. При этом в 2007 году наблюдался рост, при котором объем производства составил почти 85% от объемов 1990 года – крайне редкое явление для промышленности Украины в целом не достигшей ни разу за всю историю Независимости объемов производства 1990 года. За 2014-2015 гг. производство чугуна упало на 25% (рис.41). 
+
+##### Рис. 41. Производство чугуна по годам (млн.т.)
+```{r}
+cast.iron <- ProcessingIndustry.Nan  %>% filter(ProductName == "Cast iron")
+
+ggplot(data = cast.iron, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 41. Production of cast iron by years")
+
+```
+
+Производство стали за 25 лет Независимости сократилось  – в 4,3 раза. Наибольший рост производства стали наблюдался в 2007 году, когда достиг почти 60% объемов производства 1990 года. С 2014 по 2015 гг производство стали сократилось на 25%. 
+
+##### Рис. 41а. Производство стали по годам (млн.т.)
+```{r}
+steel <- ProcessingIndustry.Nan  %>% filter(ProductName == "Steel without semi-finished products produced through continuous casting")
+
+ggplot(data = steel, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 41a. Steel production by years")
+
+```
+
+Производство труб, трубок и профилей пустых из стали с 1990 по 2015 гг. сократилось в 6,5 раз. Небольшой рост наблюдался в 2007 году, когда объем производства по этому показателю составил 43% от объемов 1990 года. За 2014-15 гг., производство этой продукции сократилось в 1,8 раза. 
+
+##### Рис. 41б. Производство труб по годам (тыс.т.)
+```{r}
+pipes <- ProcessingIndustry.Nan  %>% filter(ProductName == "Pipes of  large and small diameters, hollow sections made of  ferrous  metals")
+
+ggplot(data = pipes, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 41b. Production of pipes by years (thousand tons)")
+
+```
+
+В машиностроении, например, производство тракторов сократилось в с 1990 по 2015 гг в 25 раз. В 2008 году наблюдался небольшой подъем производства, составивший 6% от объема выпуска продукции в 1990 году. За 2013-2015 гг не наблюдалось существенных изменений в кол-ве выпускаемой продукции этого вида. 
+
+##### Рис. 42. Производство тракторов по годам (шт.)
+```{r}
+tractors <- ProcessingIndustry.Nan  %>% filter(ProductName == "Tractors for agriculture and forestry")
+
+ggplot(data = tractors, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
         xlab("Year")+
         ylab("Pieces")+
-        geom_smooth(method = "loess")+
-        #theme(legend.position = "bottom",
-         #     legend.spacing = unit(1, "cm"))+
-        ggtitle("Fig.44. Production of some machine-tool products")+
-        
-        facet_grid(ProductName~., scales = "free")
+        ggtitle("Fig. 42. Manufacture of tractors by years (pcs.)")
+
 ```
 
-Падение производства различных комплектующих для электронных приборов, так же свидетельствует о плачевном положении дел в целой отрасли. Так, производство автоматической аппаратуры регулирования и управления, снизилось почти в 43 раза, электродвигателей и генераторов – в  8 раз (постоянного тока) и 4 раза (универсальных). Холодильников и стиральных машин стали производить, соответственно,  в 8 и 3 раза меньше. (Рис.45).
+К сожалению, данные по производству экскаваторов были найдены в архивах Госкомстата только за 2003-2015 г. За этот период их производство сократилось почти в 12 раз. За период 2014-2015гг падение составило 33%. 
 
-##### Рис.45. Производство некоторых товаров и комплектующих приборостроения.
+##### Рис.42.а. Производство экскаваторов по годам (шт.)
+```{r}
+excavators <- ProcessingIndustry.Nan  %>% filter(ProductName == "")
 
-```{r, fig.height=5, fig.width=10}
-product_names45 <- c("Devices and facilities for automatic regulation and management", "DC motors and dc generators", "Ac motors and ac generators, universal motors")
-
-fig45 <- data.frame() 
-
-for (i in product_names45){
-       temp <- ProcessingIndustry.Nan  %>% filter(ProductName == i) 
-       fig45 <- rbind(fig45, temp)
-}
-
-
-fig45$Year <- as.numeric(fig45$Year)
-
-ggplot(data = fig45, aes(x = Year, y = Value, fill = ProductName))+
-        geom_bar(colour="black", stat = "identity")+
+ggplot(data = excavators, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
         xlab("Year")+
         ylab("Pieces")+
-        geom_smooth(method = "loess")+
-        #theme(legend.position = "bottom",
-         #     legend.spacing = unit(1, "cm"))+
-        ggtitle("Fig.45. Production of some goods and components of instrument manufacture")+
-        
-        facet_grid(ProductName~., scales = "free")
+        ggtitle("Fig.42.a. Manufacture of excavators by years (pcs.)")
+
 ```
 
-Но при этом, добывающая промышленность либо не снижает темпы, либо даже наращивает их. 
-Так, добыча каменного угля возросла на 3%, торфа на 20%, природного газа – на 16%. Добыча железорудных концентратов увеличилась больше чем в 1,5 раза, добыча гипса и ангидрида – более чем в 2 раза., добыча известняка осталась на прежнем уровне, добыча песка возросла на 20% а гальки и гравия – на 30%. Добыча коалина и коалиновой глины увеличилась на 15 процентов, а соли и хлорида натрия – на 22% (рис. 46)[^footnote41].
+Производство легковых автомобилей с 1990 по 2015 гг сократилось  в 7,5 раз, но рост производства автомобилей, начавшийся в 2005 году к 2008 году (крайне редкий пример) превысил количество производимых в 1990 году автомобилей в 2 раза. Однако, начавшийся в 2009 году спад привел к тому, что за период с 2010 по 2014 гг количество производимых автомобилей сократилось почти в 3 раза. Данные 2015 год исключены, опять же, со ссылкой на требования Закона Украины «О государственной статистике», в части сохранения конфиденциальности данных. Производство автобусов сократилось при этом  в 12 раз. 
+
+
+##### Рис.42б. Производство легковых автомобилей (тыс.шт.)
+```{r}
+cars <- ProcessingIndustry.Nan  %>% filter(ProductName == "Motor cars")
+
+ggplot(data = cars, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("42b. Manufacture of passenger cars")
+
+```
+
+##### Рис.42в. Производство автобусов (тыс.шт.)
+```{r}
+buses <- ProcessingIndustry.Nan  %>% filter(ProductName == "Buses")
+
+ggplot(data = buses, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig.42c. Production of buses")
+
+```
+
+Производство велосипедов за период с 1990 по 2013 год сократилось в  18,5 раза.  С 2010 по 2015 гг принципиальных изменений в количестве производства не наблюдается (+\- 1% ежегодно). 
+
+##### Рис. 42г. Производство велосипедов (тыс.шт.)
+```{r}
+bicycles <- ProcessingIndustry.Nan  %>% filter(ProductName == "Bicycles")
+
+ggplot(data = bicycles, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig. 42g. Manufacture of bicycles (thousand pieces)")
+
+```
+
+Интересующийся слушатель может ознакомиться с более подробной подборкой статистических показателей развития (а точнее упадка) промышленности Украины за этот период. К большому сожалению автора, слушатель только убедиться в том, что и в других отраслях промышленности ситуация аналогичная. 
+
+Даже такая отрасль, как производство продуктов питания, спрос на товары которой, казалось бы, есть всегда, по многим видам продукции, пусть и не так стремительно, как тяжелая промышленность, но все же сокращает производство. Например, объемы производства сыров жирных упали в 1,5 раза. В 2007 году их производство превышало объемы 1990 года в 1,3 раза, однако, уже к 2013 году объемы выпуска продукции начали сокращаться, упав за 2014-2015гг на 25%. 
+
+##### Рис.43. Производство  сыров жирных по годам (тыс.т.)
+```{r}
+cheese <- ProcessingIndustry.Nan  %>% filter(ProductName == "Cheese with high fat content")
+
+ggplot(data = cheese, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43. Production of cheese with high fat content ")
+
+```
+
+Производство муки с 1990 по 2015 гг сократилось в 3,5 раза. С 2000 по 2008 год производство держалось на уровне 50% от объемов 1990 года, начав опять снижаться в 2010 году. За 2014-2015 гг производство упало на 15%.   
+
+##### Рис.43.а. Производство  муки по годам (тыс.т.)
+```{r}
+flour <- ProcessingIndustry.Nan  %>% filter(ProductName == "Flour")
+
+ggplot(data = flour, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43.a. Flour production by years (thousand tons)")
+
+```
+
+Производство сахара уменьшилось за период с 1990 по 2015 гг в 4,5 раза. При этом небольшой рост объемов производства наблюдался в 2006 году, когда объемы выпускаемой продукции составили 38% от объемов 1990 года. В остальные года существенных изменений не наблюдалось.  
+
+##### Рис.43.б. Производство  сахара белого по годам (тыс.т.)
+```{r}
+sugar <- ProcessingIndustry.Nan  %>% filter(ProductName == "White crystalline sugar")
+
+ggplot(data = sugar, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43.b. Production of white sugar by year (thousand tons)")
+
+```
+
+Производство хлеба и хлебобулочных изделий с 1990 по 2015 гг сократилось почти в 2 раза, особых изменений в темпах падения не наблюдалось. 
+
+##### Рис.43.в. Производство  хлеба и хлебобулочных изделий по годам (тыс.т.)
+```{r}
+bread <- ProcessingIndustry.Nan  %>% filter(ProductName == "Bread and flour products")
+
+ggplot(data = bread, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43.b. Production of white sugar by year (thousand tons)")
+
+```
+
+Производство колбасных изделий сократилось в 3,8 раза. В 2008 году производство незначительно возросло, достигнув 37% объемов 1990 года. За 2014-2015 гг производство упало на 20%.   
+
+##### Рис.43.г. Производство  колбасных изделий по годам (тыс.т.)
+```{r}
+sausages <- ProcessingIndustry.Nan  %>% filter(ProductName == "Sausages")
+
+ggplot(data = sausages, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43.c. Production of sausage products by years")
+
+```
+
+Производство масла сливочного за 1990-2015 гг сократилось в 4,3 раза. Максимальное значение показателя за годы Независимости наблюдалось в 2003 году, когда объем производства составил 30% от объемов 1990 года. За 2013-2015 г. производство масла сливочного выросло на 8%. 
+
+##### Рис.43.д. Производство  масла сливочного по годам (тыс.т.)
+```{r}
+butter <- ProcessingIndustry.Nan  %>% filter(ProductName == "Butter")
+
+ggplot(data = butter, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tons")+
+        ggtitle("Fig.43.d. Production of butter by year ")
+
+```
+
+К сожалению, для следующих показателей, доступны данные только начиная с 2003 года, что не позволяет сравнить выпуск продукции этих отраслей с годами начала Независимости Украины. Но, к сожалению, сравнение сегодняшнего состояния этих отраслей даже с далеко не лучшим в украинской промышленности 2003 годом, позволяет сделать ряд выводов о темпах падения промышленного производства.  
+Кроме того, катастрофическое падение производства, например, в станкостроении, говорит и о том, что отрасли, «инструментарий» для обеспечения работы которых производило станкостроение, так же находятся в бедственном положении.  Так, например, по сравнению с 2003 годом в 2015 году производство прессов и ковальных машин упало в 37 раз, производство станков для обработки дерева  сократилось в 3 раза, токарных и фрезерных – в 10 раз.
+
+##### Рис.44. Производство прессов и ковальных машин по годам (шт.)
+```{r}
+press <- ProcessingIndustry.Nan  %>% filter(ProductName == "Presses and forge machines")
+
+ggplot(data = press, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Pieces")+
+        ggtitle("Fig.44. Manufacture of presses and forging machines by years")
+
+```
+
+
+##### Рис.44а. Производство деревообрабатывающих станков по годам (шт.)
+```{r}
+wood.processing <- ProcessingIndustry.Nan  %>% filter(ProductName == "Lathes for wood processing")
+
+ggplot(data = wood.processing, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Pieces")+
+        ggtitle("Fig.44a. Production of woodworking machines by years")
+
+```
+
+
+##### Рис.44б. Производство станков токарных, фрезеровальных по годам (шт.)
+```{r}
+lgdm.machines <- ProcessingIndustry.Nan  %>% filter(ProductName == "Lathes, grinders, drillers, milling machines")
+
+ggplot(data = lgdm.machines, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Pieces")+
+        ggtitle("Fig.44b. Manufacture of lathes, grinders, drillers, milling machines machines by year")
+
+```
+
+Падение производства различных комплектующих для электронных приборов так же свидетельствует о плачевном положении дел в целой отрасли. Так, производство автоматической аппаратуры регулирования и управления с 2003 по 2015 гг снизилось почти в 43 раза, при том, что в 2007 году выпуск этих товаров был значительно увеличен – их произвели почти в 6 раз больше, чем в 2003.  
+
+##### Рис.45. Производство аппаратуры автоматического регулирования и управления (тыс.шт.)
+
+```{r}
+devices.reg.manag <- ProcessingIndustry.Nan  %>% filter(ProductName == "Devices and facilities for automatic regulation and management")
+
+ggplot(data = devices.reg.manag, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig.45. Manufacture of automatic regulation and control equipment")
+
+```
+
+Производство электродвигателей и генераторов универсальных так же сократилось значительно – в 3,6 раза (с 2003 по 205 гг). Ламп электрических стали производить почти в 3 раза меньше (с 1990 по 2013гг) , телеприемников - в 10 раз меньше (с 1990 по 2013 гг),  а бытовых холодильников - в 8 раз (с 1990 по 2010 гг).
+
+##### Рис.45а. Производство электродвигателей и генераторов универсалных (тыс.шт.)
+
+```{r}
+DC.motors <- ProcessingIndustry.Nan  %>% filter(ProductName == "DC motors and dc generators")
+
+ggplot(data = DC.motors, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig.45a. Manufacture of electric motors and generators")
+
+```
+
+
+##### Рис.45б. Производство ламп электрических (млн.шт.)
+
+```{r}
+electric.lamps <- ProcessingIndustry.Nan  %>% filter(ProductName == "Electric lamps ")
+
+ggplot(data = electric.lamps, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Million pieces")+
+        ggtitle("Fig.45b. Manufacture of electric lamps")
+
+```
+
+##### Рис.45в. Производство телеприемников (тыс.шт.)
+
+```{r}
+TV.receivers <- ProcessingIndustry.Nan  %>% filter(ProductName == "TV receivers")
+
+ggplot(data = TV.receivers, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig.45c. Production of TV receivers")
+
+```
+
+
+##### Рис.45г. Производство холодильников (тыс.шт.)
+
+```{r}
+refrigerators <- ProcessingIndustry.Nan  %>% filter(ProductName == "Refrigerators and deep freezers combined with separate outer doors")
+
+ggplot(data = refrigerators, aes(x = Year, y = Value))+
+        geom_bar(colour="darkblue", fill="lightblue", alpha=0.9, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand pieces")+
+        ggtitle("Fig.45d. Manufacture of refrigerators")
+
+```
+
+К сожалению, для добывающей промышленности данные за 1990 год доступны только по нескольким позициям. По этому провести объективный анализ с начала Независимости Украины практически невозможно. Если же сравнивать 2013 год с 2000 годом, то практически все по всем добываемым ископаемым вплоть до 2013 года наблюдался стабильный рост объемов добычи.  Однако, с 2013 года – когда Украина потеряла территории Крыма и зону проведения АТО - темпы производства добывающей промышленности так же резко сократились. 
+Так, добыча каменного угля по сравнению с 2000 годом возросла на 3%, торфа на 20%, природного газа – на 16%. Добыча железорудных концентратов увеличилась больше чем в 1,5 раза, добыча гипса и ангидрида – более чем в 2 раза., добыча известняка осталась на прежнем уровне, добыча песка возросла на 20% а гальки и гравия – на 30%. Добыча коалина и коалиновой глины увеличилась на 15 процентов, а соли и хлорида натрия – на 22%. (рис. 46). При этом, за 2 года (2014-2015) добыча угля сократилась в 2 раза, добыча природного газа – на 9%, добыча концентратов железорудных агломерированных – на 20%, добыча гипса – на 60%, известняка – в 2,5 раза, песка – на 25%, соли -  в 2,7 раза. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### СТАРОЕ 
+
 
 ##### Рис. 46. Производство некоторых продуктов добывающей промышленности по годам.
 
@@ -2440,7 +2804,7 @@ depreciation.fa12[-13,]
 
 # ИНОСТРАННЫЕ ИНВЕСТИЦИИ – ПАНАЦЕЯ ЛИ? 
 
-Иностранные инвестиции в Украину государственный комитет статистики публикует «по накопительному итогу». С 1994 года, когда этот показатель стал учитываться комитетом статистики Украины, общие иностранные инвестиции к 2013 году составили 58,15 млрд.дол.США[^footnote70]. После того, как в 2014 году из статистики были исключены территории Крыма и зоны проведения АТО, этот показатель к концу 2015 году уменьшился до 43,37 млрд.дол.США. Т.е. только с точки зрения потери вложенных прямых иностранных инвестиций утрата этих регионов «стоила» экономике Украины почти 15 млрд.дол.США. 
+Иностранные инвестиции в Украину государственный комитет статистики публикует «по накопительному итогу». С 1994 года, когда этот показатель стал учитываться комитетом статистики Украины, общие иностранные инвестиции к 2013 году составили 58,15 млрд.дол.США[^footnote70]. После того, как в 2014 году из статистики были исключены территории Крыма и зоны проведения АТО, этот показатель к концу 2015 году уменьшился до 43,37 млрд.дол.США[^footnote71]. Т.е. только с точки зрения потери вложенных прямых иностранных инвестиций утрата этих регионов «стоила» экономике Украины почти 15 млрд.дол.США. 
 Иностранные инвестиции в Украине имели явную тенденцию к росту, о чем свидетельствует линия тренда графика на рисунке 73. Конечно же, инвестиции крайне чувствительны как общемировым кризисам, по этому, мы наблюдаем резкое падение уровня инвестиций в Украине в 2009 г, что, очевидно, объясняется общемировым финансовым кризисом того периода. 
 
 
@@ -2448,43 +2812,97 @@ depreciation.fa12[-13,]
 ##### Рис.73. Прямые иностранные инвестиции в Украину по годам (млн.дол.США) по данным Госкомстата Украины
 ```{r}
 
-```
+direct.investments.gsk <- direct.investments.goskomstat[1:13,1:3]
 
-
-
-
-
-
-##### Рис.73. Прямые иностранные инвестиции в Украину по годам (млн.дол.США)
-
-```{r}
-# Получаем данные Ворлд Банка для получения информации о прямых инвестициях в страны, разбитых по уровню доходу
-direct_investmentUA <- wb(country = c("UA"), indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2016, removeNA = TRUE) %>% select(value, date, country)
-
-# Для наглядности, делим все значения колонки value на 1 млрд
-direct_investmentUA$value <- sapply(direct_investmentUA$value, function(x) x/1000000000)
-
-direct_investmentUA$date <- as.numeric(direct_investmentUA$date)
-
-ggplot(data = direct_investmentUA, aes(x = date, y = value, group = 1))+
+ggplot(data = direct.investments.gsk, aes(x = year, y = direct.investments.by.year, group = 1))+
         geom_line(colour="darkorange", size = 1)+
-        geom_point(aes(size = value, color = value))+
+        geom_point(aes(size = direct.investments.by.year, color = direct.investments.by.year))+
        
         xlab("Year")+
-        ylab("Billion USD")+
-        ggtitle("Fig.73. Foreign direct investment, net inflows.")
-
-
+        ylab("million USD")+
+        ggtitle("Fig.73. Foreign direct investment, net inflows (State Statistics 
+                Committee of Ukraine)")
 ```
 
 **_Прямые иностранные инвестиции в Украину по годам (млрд.дол.США)_**
 ```{r}
-direct_investmentUA
+direct.investments.gsk
 ```
+
+
+При этом, отдельно стоит отметить, что по данным Мирового Банка, который учитывает иностранные инвестиции в Украину начиная с 1992 года, к концу 2015 общий объем иностранных инвестиций составил почти 78 млрд.дол.США[^footnote72], что в 1,8 раза больше, чем инвестиции «учтенные» комитетом статистики Украины.
+
+
+##### Рис.73a. Прямые иностранные инвестиции в Украину по данным разных источников за период 1994 - 2015 гг. (млн.дол.США)
+```{r}
+# Получаем данные Ворлд Банка для получения информации о прямых инвестициях в страны, разбитых по уровню доходу
+direct_investmentUA <- wb(country = c("UA"), indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2016, removeNA = TRUE) %>% select(value, date, country)
+
+# Для наглядности, делим все значения колонки value на 1 млн
+direct_investmentUA$value <- sapply(direct_investmentUA$value, function(x) x/1000000)
+
+direct_investmentUA$date <- as.numeric(direct_investmentUA$date)
+
+# Создаем выборку данных периода 1994-2015 года по прямым инвестициям в Украину, согласно данным Всемирного Банка, и объеденяем их в одну цифру
+direct.investments.2s <- direct_investmentUA %>% filter(date >=1994) %>% summarise(Year = 2015, Direct.investments.Cumulative.total.Million.USD = sum(value), Source = "World Bank")
+# Создаем временную таблицу по прямым инвестициям в Украину, согласно данным Госкомстата Украины
+temp <- data.frame(Year = 2015, Direct.investments.Cumulative.total.Million.USD = direct.investments.goskomstat[15,2], Source = "Goskomstat")   
+# Обейденяем данные ВБ и Госкомстата в одну таблицу       
+direct.investments.2s <- rbind(direct.investments.2s, temp)
+
+ggplot(data = direct.investments.2s, aes(x = Source, y = Direct.investments.Cumulative.total.Million.USD, fill = Source))+
+        geom_bar(colour = "black", stat = "identity")+
+        xlab("data source")+
+        ylab("million US dollars")+
+        scale_fill_brewer(palette="Pastel2") +
+        ggtitle("Fig.73a. Foreign direct investment in Ukraine according to various 
+                sources (million USD)")
+        
+```
+
+Если сравнить данные Мирового Банка и Госкомстата по годам (выбраны годы, по которым доступно сравнение – 1994-2013 гг), то видно, что с 1994 по 2005 Госкомстат «насчитывал» чуть больше иностранных инвестиций в Украину, чем Мировой Банк. А вот начиная с 2006 года и по 2013 год инвестиции в Украину по данным Мирового Банк отличаются уже в сторону увеличения, причем существенно. В этот период Госкомстат «недосчитывал» от 20 до 70% иностранных инвестиций ежегодно. 
+
+
+
+
+##### Рис. 73.б Прямые иностранные инвестиции в Украину по данным разных источников по годам (млн.дол. США)
+
+```{r}
+# Создание таблицы данных прямых инвестиций в Украину Мирового Банка
+direct_investmentUA <- direct_investmentUA %>% arrange(date) 
+direct_investmentUA2 <- direct_investmentUA %>% filter(date >= 1994 & date <= 2001) %>% summarise(value = sum(value), date = "1994-2001")
+direct_investmentUA2 <- rbind(direct_investmentUA2, direct_investmentUA[11:24,1:2])
+direct_investmentUA2$date <- as.factor(direct_investmentUA2$date)
+direct_investmentUA2$source <- rep("World Bank", 15)
+# Создание таблицы данных прямых инвестиций в Украину Госкомстата
+direct.investments.goskomstat <- direct.investments.goskomstat[,1:3]
+colnames(direct.investments.goskomstat) <- c("date", "direct.investments..Cumulative.total..Million.USD", "value")
+direct.investments.gks <- direct.investments.goskomstat %>% select(c(date, value))
+direct.investments.gks$source <- rep("Goskomstat", 15)
+# Объеденяем оба источника данных в одну таблицу
+direct.investments.2s <- rbind(direct_investmentUA2, direct.investments.gks)
+
+ggplot(data = direct.investments.2s, aes(x = date, y = value, fill = source))+
+        geom_bar(colour="black", stat = "identity")+
+        xlab("Year")+
+        ylab("million USD")+
+        
+        scale_fill_brewer(palette="Pastel2") +
+        ggtitle("Fig. 73.b Foreign direct investment in Ukraine according to different sources 
+                by year (million USD)")+
+        facet_grid(source~., scales = "free")
+
+```
+
+**_Прямые иностранные инвестиции в Украину по данным разных источников по годам (млн.дол. США)_**
+```{r}
+direct.investments.2s
+```
+
 
 Необходимо так же отметить, что за последние 10 лет в среднем 30% от общего объема так называемых «прямых иностранных инвестиций» в Украину - это инвестиции из таких стран как Кипр, Белиз, Виргинские Острова – оффшорных зон, т.е. это кругооборот денег, которые выходят из Украины через трансфертное ценообразование и заходят назад как прямые иностранные инвестиции.  (Рис.74)
 
-##### Рис.74. Доля оффшорных стран в прямых иностранных инвестициях в Украину по годам (%)[^footnote71]. 
+##### Рис.74. Доля оффшорных стран в прямых иностранных инвестициях в Украину по годам (%)[^footnote73]. 
 
 ```{r}
 colnames(Offshore_investments) <- c("Year", "% of offshore zones investments")
@@ -2504,12 +2922,30 @@ ggplot(data = Offshore_investments, aes(x = Year, y = `% of offshore zones inves
 Offshore_investments
 ```
 
+А если к инвестициям из оффшорных зон добавить так же и инвестиции из Нидерландов (страны, крайне популярной для регистрации холдингов), то цифра получится еще больше – в среднем почти 40% ежегодно. 
 
-Среднее ежегодное значение инвестиций на душу населения в Украине за последние 25 лет самые низкое среди выбранных для сравнения стран – всего 69 дол.США. Это в два раза меньше, чем в РФ и в 4,5 раза меньше, чем в Латвии. (Рис.75)[^footnote72].
-При этом, необходимо отметить, что если в 1995 году Латвия опережала РФ по количеству инвестиций на душу населения в 10 раз (!), то уже в 2014, РФ обогнала Латвию почти на 10% (рис.76)[^footnote73].
+##### Рис.74a. Доля оффшорных стран и Нидерландов в прямых иностранных инвестициях в Украину по годам (%)[^footnote74].
+```{r}
+colnames(Offshore.andN_investments) <- c("Year", "% of offshore zones investments")
+
+ggplot(data = Offshore.andN_investments, aes(x = Year, y = `% of offshore zones investments`, fill = `% of offshore zones investments`))+
+        geom_bar(colour = "black", stat = "identity")+
+        xlab("Year")+
+        ylab("% of offshore zones investments")+
+        
+        ggtitle("Fig. 74a. The share of offshore countries and the Netherlands in foreign direct 
+                investment in Ukraine by years (%).")
+        
+```
+
+**_Доля оффшорных стран и Нидерландов в прямых иностранных инвестициях в Украину по годам (%)_**
+```{r}
+Offshore.andN_investments
+```
 
 
-##### Рис.75. Общий объем инвестиций как % от ВВП[^footnote74].
+
+##### Рис.75. Общий объем инвестиций как % от ВВП[^footnote75].
 
 ```{r}
 # Рисунки 75-76 доклада удалены. 77 стал 75
@@ -2535,55 +2971,71 @@ ggplot(data = direct_investment, aes(x = date, y = value, fill = country))+
 
 
 Из телевизионных выступлений, статей в прессе, других информационных потоков, говорящих о том, что «ЕС выделяет финансирование», «МВФ подтвердило очередной транш»,  «США готовы инвестировать в…», и так далее, автор уверен, у многих формируется ощущение, что «богатые» страны, в каком то роде помогают «бедным». Давайте рассмотрим инвестиции в разрезе уровня дохода стран, куда они попадают. 
-И так, по классификации Мирового Банка[^footnote75] к группе с «высоким уровнем дохода» относятся 79 стран мира, население которых составляет 1,2 млрд. человек. В группе с уровнем дохода «выше среднего» - 56 стран, общая численность населения которых - 2,6 млрд.чел. И в группах с уровнем дохода «низкий» и «ниже среднего» - 83 страны , общей численностью населения  3,6 млрд. 
-Если принять как гипотезу, что «богатые» страны охотно инвестируют в «бедные», и сравнить инвестиционные потоки по этим группам, то, исходя из указанных цифр, прямые иностранные инвестиции должны в большей степени поступать в страны с низким и ниже среднего уровнем дохода. Однако, как свидетельствует статистика того же Мирового Банка[^footnote76], на самом деле, все на оборот. Так, в 2015 году, инвестиции в страны с высоким уровнем дохода (79 стран, 1,2 млрд.чел. население) больше чем в 10 раз (!!!) превышали инвестиции в страны с уровнем дохода «низкий и ниже среднего» (83 страны, 3,6 млрд.чел. население).  И подобная динамика наблюдалась и 10 и 20 лет назад (см. Рис 78). 
+И так, по классификации Мирового Банка[^footnote76] к группе с «высоким уровнем дохода» относятся 79 стран мира, население которых составляет 1,2 млрд. человек. В группе с уровнем дохода «выше среднего» - 56 стран, общая численность населения которых - 2,6 млрд.чел. И в группах с уровнем дохода «низкий» и «ниже среднего» - 83 страны , общей численностью населения  3,6 млрд. 
+Если принять как гипотезу, что «богатые» страны охотно инвестируют в «бедные», и сравнить инвестиционные потоки по этим группам, то, исходя из указанных цифр, прямые иностранные инвестиции должны в большей степени поступать в страны с низким и ниже среднего уровнем дохода. Однако, как свидетельствует статистика того же Мирового Банка[^footnote77], на самом деле, все на оборот. Так, в 2015 году, инвестиции в страны с высоким уровнем дохода (79 стран, 1,2 млрд.чел. население) больше чем в 10 раз (!!!) превышали инвестиции в страны с уровнем дохода «низкий и ниже среднего» (83 страны, 3,6 млрд.чел. население).  И подобная динамика наблюдалась и 10 и 20 лет назад (см. Рис 78). 
 
 ##### Рис.76. Инвестиции по уровню дохода стран 1990-2015 гг. (млрд.дол.США)
 
 ```{r}
 # Подлючаемся к данным Ворлд Банка для получения информации о прямых инвестициях в страны, разбитых по уровню доходу
-investment_income.level <- wb(indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2015, removeNA = TRUE) #%>% select(value, date, country)
+investment_income.level <- wb(indicator = "BX.KLT.DINV.CD.WD", startdate = 1990, enddate = 2015, removeNA = TRUE) %>% select(value, date, country)
 
-# Выделям строки со словом "income" и создем из них новую таблицу
-temp <- grep("income", investment_income.level$country)
+# Извлекаем строки со словом Low income, High income, Lower middle income, Upper middle income, и создем из них новую таблицу
+temp <- grep("Low income|High income|Lower middle income|Upper middle income", investment_income.level$country)
 fdi <- data.frame()
 for(i in temp){
         fdi <- rbind(fdi, investment_income.level[i,])
 }
 
-# Удаляем из таблицы лишние строки со словом "excluding", и другие строки
-temp <- grep("(excluding.)", fdi$country)
-for(i in temp){
-        fdi <- fdi[-i,]
-}
-
-fdi <- fdi[-c(1:26, 40:52, 105:130, 157:182),]
-
 # Для наглядности, делим все значения колонки value на 1 млрд
 fdi$value <- sapply(fdi$value, function(x) x/1000000000)
 
+fdi$country <- as.factor(fdi$country)
+
+# Объеденяем страны низкого и ниже среднего уровня доходов
+low.and.lowermiddle <- data.frame() 
+for(i in 2015:1990){
+        temp <- fdi %>% filter(date == i, country == "Lower middle income" | country == "Low income") %>%
+                summarise(value = sum(value), date = i, country = "Low and lower-middle income")
+        
+        low.and.lowermiddle <- rbind(low.and.lowermiddle, temp)
+}
+
+# Создаем новую таблицу из категорий High income, Upper middle income и Low and lower-middle income 
+temp <- fdi %>% filter(country == "High income" | country == "Upper middle income") 
+fdi <- rbind(temp, low.and.lowermiddle)
+
+# Для нормальной визуализации графика, переводим fdi$date в класс numeric
+fdi$date <- as.numeric(fdi$date)
+
 # Создаем график 
-ggplot(data = fdi, aes(x = country, y = value, fill = country))+
-        geom_bar(colour="black", stat = "identity")+
+ggplot(data = fdi, aes(x = date, y = value))+
+        geom_line(aes(colour = country))+
+        geom_point()+
+       
         xlab("Year")+
-        ylab("Pieces")+
-        geom_smooth(method = "loess")+
-        scale_fill_brewer(palette="Pastel2") +
-        ggtitle("Fig. 76. Investments in the level of income of countries 1990-2015. (Billions of USD)")+
-        coord_flip()+
-        facet_grid(date~., scales = "free")
+        ylab("Billions of USD")+
+        ggtitle("Fig. 76. Investments depending on the level of income of countries 1990-2015.")
+
 
 ```
 
+**_Инвестиции по уровню дохода стран 1990-2015 гг. (млрд.дол.США)_**
+```{r}
+fdi2 <- spread(fdi, country, value)
+fdi2
+```
+
+
 Кроме того, благодаря тем же информационным потокам, мы, в какой-то мере начинаем считать «инвестиции» дружеской помощью, совершенно забывая о том, что «инвестор» и «благотворитель» - это совершенно разные вещи. Задача инвестора не в том, что бы помочь деньгами нуждающемуся, а в том, что бы вернуть вложенные средства, как можно быстрее, и с как можно большим доходом.  	
-По этому, говоря о растущем уровне иностранных инвестиций, крайне важно упоминать  и такой, мало принятый в Украине, но популярный в мировой статистической практике показатель, как чистый иностранный доход (Net income from abroad). Чистый иностранный доход это разница между общим значением дохода, полученного не-ризеднтами из страны и выплаченного не-резидентами для страны[^footnote77]. Он включает в себя все: доходы от трудовой деятельности, доходы от имущества и предпринимательский доход (что покрывает, собственно,  инвестиционные доходы), а так же доходы от нефинансовой собственности (патенты, авторские права и т.д.).
+По этому, говоря о растущем уровне иностранных инвестиций, крайне важно упоминать  и такой, мало принятый в Украине, но популярный в мировой статистической практике показатель, как чистый иностранный доход (Net income from abroad). Чистый иностранный доход это разница между общим значением дохода, полученного не-ризеднтами из страны и выплаченного не-резидентами для страны[^footnote78]. Он включает в себя все: доходы от трудовой деятельности, доходы от имущества и предпринимательский доход (что покрывает, собственно,  инвестиционные доходы), а так же доходы от нефинансовой собственности (патенты, авторские права и т.д.).
 Данный показатель может быть как положительным, так и отрицательным. Его отрицательная величина означает, что «изъятых» не-резидентами из страны денег больше, чем «вложенных» в нее. Если говорить об Украине, то за все годы ее независимости, этот показатель всегда был отрицательным. Другими словами, не смотря на положительную динамику иностранных инвестиций, не-резидентами «изымается» из страны больше, чем вкладывается. Так, начиная с 1993 года из Украины было выведено на 32 млрд.долларов больше, чем «вложено» иностранным капиталом. В среднем, ежегодно «изымается» на 1,4 млрд. долларов больше, чем вкладывается.  (см.Рис 77)
 
 
 ##### Рис.77. Чистый иностранный доход Украины 1992-2015 гг (млн.дол.США)  !!!! СРАВНИТЬ С ПОЛЬШЕЙ
 
 ```{r}
-# Получаем данные Ворлд Банка  о чистых иностранных доходах Украины
+# Получаем данные Всемирного Банка  о чистых иностранных доходах Украины
 nfi.UA <- wb(country = c("UA"), indicator = "NY.GSR.NFCY.CD", startdate = 1990, enddate = 2016, removeNA = TRUE) %>% select(value, date, country)
 
 # Для наглядности, делим все значения колонки value на 1 млн
@@ -2733,9 +3185,16 @@ Markdown | Less | Pretty
 
 [^footnote37]: https://www.statbureau.org/ru/united-states/inflation-charts-yearly
 
-[^footnote38]: http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS
+[^footnote38]: https://www.quandl.com/data/WORLDBANK/BLR_IPTOTSAKD-Belarus-Industrial-Production-constant-US-seas-adj - для данных по Беларуси, и  http://databank.worldbank.org/data/download/GemDataEXTR.zip - для данных по другим странам.
 
 [^footnote39]: Статистичний щорічник України за 2013 рік. ДЕРЖАВНА СЛУЖБА СТАТИСТИКИ УКРАЇНИ. За редакцією О.Г.Осауленка. Відповідальний за випуск О.А. Вишневська. 2013 library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf
+
+[^footnote40]: http://ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/xls/vov20XX_u.zip
+
+
+
+
+
 
 [^footnote40]: http://www.ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/prm_ric_u/vov2004_u.html
 
@@ -2796,25 +3255,28 @@ http://www.segodnya.ua/blogs/kotlubaiblog/blog-kak-spasti-torgovoe-sudohodstvo-u
 
 [^footnote67]: Там же
 
-[^footnote68]:  http://www.ukrstat.gov.ua/operativ/menu/menu_u/ioz.htm и авторская таблица доступна для скачивания на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/investments%20in%20the%20fixed%20assets.xlsx. 
+[^footnote68]:  http://www.ukrstat.gov.ua/operativ/menu/menu_u/ioz.htm. Авторская таблица доступна для скачивания на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/investments%20in%20the%20fixed%20assets.xlsx. 
 
 [^footnote69]: Статистический ежегодник Украины за 2013 г., стр.81 library.oneu.edu.ua/files/StatSchorichnyk_Ukrainy_2013.pdf
 
-[^footnote70]:  http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
+[^footnote70]: http://ukrstat.org/uk/operativ/operativ2013/zd/ivu/ivu_u/ivu0413.html
 
-[^footnote71]: http://www.ukrstat.gov.ua/operativ/operativ2016/zd/ivu/ivu_u/ivu0116.html. ДОБАВИТЬ ССЫЛКУ НА СОБСТВЕННЫЙ ИСТОЧНИК
+[^footnote71]: http://ukrstat.org/uk/operativ/operativ2015/zd/ivu/ivu_u/ivu0415.html 
 
-[^footnote72]: http://eucham.eu/charts/153-2015-03-foreign-direct-investment-per-capita-in-europe и глобальная база данных NationMaster http://www.nationmaster.com/country-info/stats/Economy/Foreign-direct-investment
+[^footnote72]: http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
 
-[^footnote73]: Там же 
+[^footnote73]: http://www.ukrstat.gov.ua/operativ/operativ2016/zd/ivu/ivu_u/ivu0116.html. Авторская таблица доступна для скачивания на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/offshore%20zones%20investments.xlsx. 
 
-[^footnote74]:  http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS
+[^footnote74]: http://www.ukrstat.gov.ua/operativ/operativ2016/zd/ivu/ivu_u/ivu0116.html. Авторская таблица доступна для скачивания на сайте https://github.com/i2alex/Privatization-in-Ukraine.-1992-2015/blob/master/Data/offshore%20zones%20%2BNetherlands%20investments.xlsx. 
 
-[^footnote75]: См.детальную классификацию стран Мировым Банком  http://blogs.worldbank.org/opendata/new-country-classifications
+[^footnote75]: http://data.worldbank.org/indicator/NE.GDI.TOTL.ZS
 
-[^footnote76]: http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
+[^footnote76]: См.детальную классификацию стран Мировым Банком  http://blogs.worldbank.org/opendata/new-country-classifications
 
-[^footnote77]: http://data.worldbank.org/indicator/NY.GSR.NFCY.CD
+[^footnote77]: http://data.worldbank.org/indicator/BX.KLT.DINV.CD.WD
+
+[^footnote78]: http://data.worldbank.org/indicator/NY.GSR.NFCY.CD
+
 
 
 
