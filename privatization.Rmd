@@ -1702,6 +1702,7 @@ Industrial_production2 <- spread(Industrial_production, Country, `Billions USD`)
 Industrial_production2
 ```
 
+### Обробатывающая промышленность
 Если же говорить о конкретных объемах производства товаров, то они снизились практически для всех отраслей промышленности. 
 
 Так, например, в нефтеперерабатывающей промышленности за период с 1990 по 2015 гг. изготовление кокса снизилось в 3 раза. При этом в 2003 году наблюдался небольшой рост производства кокса, общий объем в тот период составил почти 2/3 объема 1990 года. За 2013-2015 гг. производство кокса сократилось еще в 1,5 раза. (см.рис.39).[^footnote39].  
@@ -2100,13 +2101,118 @@ ggplot(data = refrigerators, aes(x = Year, y = Value))+
 
 ```
 
+### Добывающая промышленность
 К сожалению, для добывающей промышленности данные за 1990 год доступны только по нескольким позициям. По этому провести объективный анализ с начала Независимости Украины практически невозможно. Если же сравнивать 2013 год с 2000 годом, то практически все по всем добываемым ископаемым вплоть до 2013 года наблюдался стабильный рост объемов добычи.  Однако, с 2013 года – когда Украина потеряла территории Крыма и зону проведения АТО - темпы производства добывающей промышленности так же резко сократились. 
-Так, добыча каменного угля по сравнению с 2000 годом возросла на 3%, торфа на 20%, природного газа – на 16%. Добыча железорудных концентратов увеличилась больше чем в 1,5 раза, добыча гипса и ангидрида – более чем в 2 раза., добыча известняка осталась на прежнем уровне, добыча песка возросла на 20% а гальки и гравия – на 30%. Добыча коалина и коалиновой глины увеличилась на 15 процентов, а соли и хлорида натрия – на 22%. (рис. 46). При этом, за 2 года (2014-2015) добыча угля сократилась в 2 раза, добыча природного газа – на 9%, добыча концентратов железорудных агломерированных – на 20%, добыча гипса – на 60%, известняка – в 2,5 раза, песка – на 25%, соли -  в 2,7 раза. 
+Так, добыча каменного угля по сравнению с 2000 годом возросла на 3%, торфа на 20%, природного газа – на 16%. Добыча железорудных концентратов увеличилась больше чем в 1,5 раза, добыча гипса и ангидрида – более чем в 2 раза., добыча известняка осталась на прежнем уровне, добыча песка возросла на 20% а гальки и гравия – на 30%. Добыча коалина и коалиновой глины увеличилась на 15 процентов, а соли и хлорида натрия – на 22%. (рис. 46)[^footnote41]. При этом, за 2 года (2014-2015) добыча угля сократилась в 2 раза, добыча природного газа – на 9%, добыча концентратов железорудных агломерированных – на 20%, добыча гипса – на 60%, известняка – в 2,5 раза, песка – на 25%, соли -  в 2,7 раза. 
+
+##### Рис. 46. Добыча угля каменного по годам (млн.т.) 
+
+```{r}
+ExtractiveIndustry.Nan <- ExtractiveIndustry %>% filter(Value > 0)
+
+coal <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Coal available")
+
+ggplot(data = coal, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 46. Coal mining by year (million tons)")
+
+```
 
 
+##### Рис.46а. Добыча торфа неагломерированного топливного (тыс.т.)
+
+```{r}
+fuel.peat <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Non-agglomerate fuel peat (conventional moisture)")
+
+ggplot(data = fuel.peat, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Thousand tones")+
+        ggtitle("Fig.46a. Extraction of peat of non-agglomerated fuel.")
+
+```
+
+##### Рис.46б. Добыча природного газа (млрд.м.куб.)
+
+```{r}
+natural.gas <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Natural gas")
+
+ggplot(data = natural.gas, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Billion cubic meters")+
+        ggtitle("Fig.46b. Extraction of natural gas.")
+
+```
 
 
+##### Рис.46в. Добыча концентратов железорудных, неагломерированных. (млн.т.)
 
+```{r}
+iron.concentrates.n <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Non-agglomerated iron concentrates")
+
+ggplot(data = iron.concentrates.n, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 46c. Extraction of non-agglomerated iron concentrates.")
+
+```
+
+
+##### Рис.46г. Добыча концентратов железорудных, агломерированных. (млн.т.)
+
+```{r}
+iron.concentrates.a <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Agglomerated iron concentrates")
+
+ggplot(data = iron.concentrates.a, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 46d. Extraction of agglomerated iron concentrates.")
+
+```
+
+
+##### Рис.46д. Добыча гипса и ангидрида. (млн.т.)
+
+```{r}
+gypsum <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Gypsum and anhydrite")
+
+ggplot(data = gypsum, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig. 46d. Extraction of gypsum and anhydride.")
+
+```
+
+
+##### Рис.46е. Добыча известняка (млн.т.)
+
+```{r}
+limestone <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Limestone")
+
+ggplot(data = limestone, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million tones")+
+        ggtitle("Fig.46e. Limestone mining.")
+```
+
+##### Рис.46ж.  Добыча песка (млн.м.куб.)
+
+```{r}
+natural.sands <- ExtractiveIndustry.Nan  %>% filter(ProductName == "Natural sands, ")
+
+ggplot(data = natural.sands, aes(x = Year, y = Value))+
+        geom_bar(colour="darkred", fill="pink", alpha=0.5, stat = "identity")+
+        xlab("Year")+
+        ylab("Million cubic meters")+
+        ggtitle("Fig.46zh. Extraction of sand.")
+```
 
 
 
@@ -2124,7 +2230,7 @@ ggplot(data = refrigerators, aes(x = Year, y = Value))+
 
 ```{r, fig.height=5, fig.width=10}
 ExtractiveIndustry.Nan <- ExtractiveIndustry %>% filter(Value > 0)
-product_names46 <- c("Coal available", "Non-agglomerate fuel peat (conventional moisture)", "Natural gas", "Non-agglomerated iron concentrates", "Agglomerated iron concentrates", "Gypsum and anhydrite", "Limestone", "Natural sands", "Pebbles, gravel, macadam and crushed stone", "Kaolin and other kaolinitic clay", "Salt and pure sodium chloride")
+product_names46 <- c(, "Gypsum and anhydrite", "Limestone", "Natural sands", "Pebbles, gravel, macadam and crushed stone", "Kaolin and other kaolinitic clay", "Salt and pure sodium chloride")
 
 fig46 <- data.frame() 
 
@@ -3191,12 +3297,12 @@ Markdown | Less | Pretty
 
 [^footnote40]: http://ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/xls/vov20XX_u.zip
 
+[^footnote41]: http://www.ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/prm_ric_u/vov2004_u.html
 
 
 
 
 
-[^footnote40]: http://www.ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/prm_ric_u/vov2004_u.html
 
 [^footnote41]: http://www.ukrstat.gov.ua/operativ/operativ2006/pr/prm_ric/prm_ric_u/vov2004_u.html
 
