@@ -110,29 +110,22 @@ if(!file.exists("Processing industry_fin.xlsx")){
         download.file(url, destfile = "Processing industry_fin.xlsx", method = "curl")
 }
 ## 3. Investments in the fixed assets of ukrainain companies by type of the economic activity per year
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/investments%20in%20the%20fixed%20assets.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/investments%20in%20the%20fixed%20assets.xlsx"
 if(!file.exists("investments in the fixed assets.xlsx")){
         download.file(url, destfile = "investments in the fixed assets.xlsx", method = "curl")
 }
 
 ## 4. Data on the number of people employed in various sectors of the economy for years 
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/labour.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/labour.xlsx"
 if(!file.exists("labour.xlsx")){
         download.file(url, destfile = "labour.xlsx", method = "curl")
 }
 
 ## 4a. Data on the number of people employed in economic activities
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/84f82fa1/Data/employed_in_economic_activity.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/employed_in_economic_activity.xlsx"
 if(!file.exists("employed_in_economic_activity.xlsx")){
         download.file(url, destfile = "employed_in_economic_activity.xlsx", method = "curl")
 }
-
-
-## 5. Private sector share in GDP (in per cent)  
-#url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/GDP_by_private_companies_ua_by_year.xlsx"
-#if(!file.exists("GDP_by_private_companies_ua_by_year.xlsx")){
-#        download.file(url, destfile = "GDP_by_private_companies_ua_by_year.xlsx", method = "curl")
-#        }
 
 ## 5. Private sector share in GDP (in per cent) 
 url <- "http://www.ebrd.com/downloads/research/economics/macrodata/sci.xls"
@@ -141,37 +134,37 @@ if(!file.exists("sci.xls")){
 }
 
 ## 6. Data on investments in privatized companies by years
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/investments_in_privatized_companies.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/investments_in_privatized_companies.xlsx"
 if(!file.exists("investments_in_privatized_companies.xlsx")){
         download.file(url, destfile = "investments_in_privatized_companies.xlsx", method = "curl")
 }
 
 ## 7. Data on Enterprises by ownership
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/number_of_enterprices_%20by_ownership_ua.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/number_of_enterprices_%20by_ownership_ua.xlsx"
 if(!file.exists("number_of_enterprices_ by_ownership_ua.xlsx")){
         download.file(url, destfile = "number_of_enterprices_ by_ownership_ua.xlsx", method = "curl")
 }
 
 ## 8. Privatization contracts by State control over the fulfillment of the terms of sales contracts by groups of privatization objects 
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_contracts_over_control.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/privatization_contracts_over_control.xlsx"
 if(!file.exists("privatization_contracts_over_control.xlsx")){
         download.file(url, destfile = "privatization_contracts_over_control.xlsx", method = "curl")
 }
 
 ## 9. Privatization index of EBRD. Selected countries
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_index_EBRD_selected_countries.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/privatization_index_EBRD_selected_countries.xlsx"
 if(!file.exists("privatization_index_EBRD_selected_countries.xlsx")){
         download.file(url, destfile = "privatization_index_EBRD_selected_countries.xlsx", method = "curl")
 }
 
 ## 10. % of privatization in the total Ukrainian budget receipts per year
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/f0973d87/Data/privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx"
 if(!file.exists("privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx")){
         download.file(url, destfile = "privatization_receipts_in_total_ukr_budget_receipts_per_year.xlsx", method = "curl")
 }
 
 ## 11. Data on the groups, number and years of privatized companies in the Ukraine
-url <- "https://cdn.rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/265e2aa7/Data/privatization_ua.xlsx"
+url <- "https://rawgit.com/i2alex/Privatization-in-Ukraine.-1992-2015/master/Data/privatization_ua.xlsx"
 if(!file.exists("privatization_ua.xlsx")){
         download.file(url, destfile = "privatization_ua.xlsx", method = "curl")
 }
@@ -1527,7 +1520,7 @@ ggplot(data = contracts, aes(x = object.class, y = quantity,
 Необходимость сохранения профиля деятельности закладывалась в договора купли-продажи для 11% объектов малой приватизации и 7% крупных и стратегически важных предприятий. Передавая производственную мощь страны в руки частного собственника, государство выразило обеспокоенность в сохранении производественных мощностей только в 0,3% случаев объектов малой приватизации и 2% случаев больших и стратегически важных предприятий. (Рис.32).  
 
 #### Рис.32. Сравнение кол-ва договоров купли-продажи, содержащих условия, касающиеся производства с общим количеством объектов категории (ед.).
-```{r}
+```{r, fig.width=7}
 # Создание таблицы данных по количеству договоров приватизации содержащих дополнитеные условия относительно сохранения рабочих мест
 contracts <- data.frame(object.class = rep(c("A", "B,G", "D"), 3), terms.of.contracts = c(rep("Всего объектов в категории", 3), rep("Сохранение профиля деятельности", 3), rep("Сохранеие/увеличение объемов производства", 3)), quantity = c(15987, 9769, 4168, 1853, 700, 171, 62, 229, 0))
 
@@ -1536,12 +1529,14 @@ ggplot(data = contracts, aes(x = object.class, y = quantity,
                                          fill = terms.of.contracts ))+
         geom_bar(colour="black", stat = "identity")+
         scale_fill_brewer(palette="Pastel2") +
-        xlab("Countries")+
-        ylab("EBRD privatization index")+
+        xlab("")+
+        ylab("")+
         ggtitle("Рис.32. Договра приватизации содержащие дополнительные условия 
 относительно сохранения профильности и объемов производства пред-й")+
         geom_text(aes(label=quantity), position=position_dodge(width=0.9), vjust=-0.35)+
-        facet_grid(.~terms.of.contracts)
+        facet_grid(.~terms.of.contracts)+
+        #coord_flip()+
+        guides(fill=FALSE)
 
 
 
@@ -1550,7 +1545,7 @@ ggplot(data = contracts, aes(x = object.class, y = quantity,
 
 
 ##Крупные и стратегические предприятия Украины. Жизнь после приватизации. 
-После развала СССР под руководством западных "экспертов" и "консультантов", новым молодым республикам, включая Украину, была предложенна новая модель хозяйствования, одной из центральных чаастей которой была приватизация. На тот момент новая экономическая модель была воспринята с воодушевлением. Все ожидали расцвета национальной экономики на базе частных, более эффективной, промышленных отрослях. Сегодня, 25 лет спустя можно подвести результаты и итоги деятельности приватизированных предпритий.
+После развала СССР под руководством западных "экспертов" и "консультантов", новым молодым республикам, включая Украину, была предложена новая модель хозяйствования, одной из центральных частей которой была приватизация. На тот момент новая экономическая модель была воспринята с воодушевлением. Все ожидали расцвета национальной экономики на базе частных, более эффективной, промышленных отрослях. Сегодня, 25 лет спустя можно подвести результаты и итоги деятельности приватизированных предпритий.
 
 Отследить судьбу всех (почти 30 тысяч) приватизированных предприятий довольно сложно, особенно, учитывая  тот факт, что в открытых данных такой статистики нет. По этому, автор ограничился наиболее важной категорией – крупными и стратегически важными предприятиями. Для этого пришлось запросить полный список предприятий этих групп, приватизированных за весь период независимости Украины у ФГИУ[^fna]. Получив официальный ответ, эти данные были сопоставлены с данными государственного реестра юридических лиц, доступном на сайте Министерства юстиции Украины[^fnb], определив по коду  ЕГРПОУ в списке приватизированных предприятий те, которые были ликвидированы. 
 Как ранее уже было сказано, за годы независимости было приватизировано порядка 8000 крупных и стратегически важных предприятий. Из них, по состоянию на 2016 год были ликвидированы 3272 предприятия, или 41,7% от общего количества[^fnc] приватизированных предприятий(Рис.33-34). 
@@ -1560,14 +1555,14 @@ ggplot(data = contracts, aes(x = object.class, y = quantity,
 
 #### Рис. 33. Сравнение кол-ва ликвидированных и действующих предприятий среди приватизированных объектов групп В,Г  (ед.).
 
-```{r}
+```{r, fig.width=7}
 df <- data.frame(Enterprises = c("Количество приватизированных пред-й", "Количество ликвидированных пред-й"), Quantity = c(7840, nrow(priv_liquidated)))
 
 ggplot(data = df, aes(x = Enterprises, y = Quantity, 
                                          fill = Enterprises))+
         geom_bar(colour="black", stat = "identity")+
-        xlab("Class of privatized companies")+
-        ylab("Number of privatized companies")+
+        xlab("")+
+        ylab("Количество компаний")+
         ggtitle("Рис.33. Количество ликвидированных 
                 приватизированных предприятий")+
         coord_flip()+
@@ -1912,7 +1907,9 @@ grid.arrange(p1, p2, ncol = 2)
 *Графики 53-54 были построены на основе данных глобальной статистической базы NationMaster http://www.nationmaster.com/. Там можно отследить указанные показатели по многим странам.*
 
 К сожалению, за последние 25 лет классификация занятости населения по отраслям экономики менялась не однократно.  В разные периоды, например, «образование», относили к «науке», выделяли в отдельную строку отчетов, присоединяли к «культуре и спорту», объединяли с «социальными работниками». «Культуру и спорт» так же в разные периоды либо выделяли отдельно, либо объединяли с индустрией досуга. Досуг относился и к «другим услугам», и  к «администрированию». «Социальных работников» в одни периоды объединяли с работниками образования, в другие периоды - с работниками здравоохранения, или так же относили к категории «другое». Из категории «транспорт и связь» выделили отдельно «телекоммуникацию», присовокупив к ней, однако, информацию.   Учитывая такие структурные изменения в самих формах статистической отчетности детальный ретроспективный анализ вплоть до 1990 года не возможен ввиду отсутствия данных, пригодных для сравнения. Последние изменения в структуре отчетности были проведены в 2011 году, но последние 5 лет не отражают  всех тенденций структурных изменений в занятости населения Украины.
-Единственные группы классификации занятости населения по отраслям экономики, которые не претерпевали «объединений» и «разделений», и потому остались доступными для ретроспективного анализа - это сельское хозяйство и промышленность.  По этому, авторы предлагают воспользоваться международной практикой, характерной для большинства глобальных баз данных. В них, для простоты, в 2 отдельные группы выделяют, собственно, имеющиеся и у нас «промышленность» и «сельское хозяйство», а к третьей группе - «услуги» - относят все остальное. 
+
+Единственные группы классификации занятости населения по отраслям экономики, которые не претерпевали «объединений» и «разделений», и потому остались доступными для ретроспективного анализа - это сельское хозяйство и промышленность.  По этому, предлагатся воспользоваться международной практикой, характерной для большинства глобальных баз данных. В них, для простоты, в 2 отдельные группы выделяют, собственно, имеющиеся и у нас «промышленность» и «сельское хозяйство», а к третьей группе - «услуги» - относят все остальное. 
+
 И так, за весь период независимости количество населения Украины, занятое в экономической деятельности, сократилось более чем на на 17 млн.кадров (с 25,4 в 1990 году до 8,3 млн. в 2015 году). (см.табл.2). При том, что в общем  численность населения Украины по данным официальной статистики[^footnote25] сократилась на 9 млн.чел. (с 51,8 в 1990 году до 42,9 млн. в 2015году). А численность населения трудоспособного возраста – всего на 4 млн. человек (30,3 млн. в 1990 году до 26,6 млн. в 2015 году.)[^footnote26]. 
 При этом за 25 лет более 5 млн. специалистов (это почти 70% по сравнению с 1990 годом) потеряла промышленность Украины  и 4,36 млн. специалистов (87% по сравнению с 1990 годом) потеряло сельское хозяйство (см.Таблицу 2)[^footnote27]. Вообще, изъятие более 17 млн. кадров из разных областей - невосполнимая потеря для экономики Украины. И если потерю 4 млн. кадрового потенциала объясняют естественные причины (выход на пенсию), то 13 млн.человек - это граждане, которые перешли в нерегламентированную и нелегальную занятость, из грамотных инженеров, технологов, производственников, переквалифицировавшись в неумелых менеджеров по продажам «всего, чего изволите», выехали на заработки за границу, или пополнили ряды безработных (Рис.44)[^footnote28].
 
@@ -2349,7 +2346,7 @@ Industrial_production2 <- spread(Industrial_production, Country, `Billions USD`)
 Industrial_production2
 ```
 
-### Обробатывающая промышленность
+### Обрабатывающая промышленность
 Если же говорить о конкретных объемах производства товаров, то они снизились практически для всех отраслей промышленности. 
 
 Так, например, в нефтеперерабатывающей промышленности за период с 1990 по 2015 гг. изготовление кокса снизилось в 3 раза. При этом в 2003 году наблюдался небольшой рост производства кокса, общий объем в тот период составил почти 2/3 объема 1990 года. За 2013-2015 гг. производство кокса сократилось еще в 1,5 раза. (см.рис.56).[^footnote39].  
